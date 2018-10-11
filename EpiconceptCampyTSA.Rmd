@@ -1,0 +1,497 @@
+---
+title: "Analysing Campylobacter time series in R"
+output: 
+  worded::rdocx_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = F, warning= F, message= F}
+#load packages
+  #Those required for creating this markdown: 
+    #"Worded": for styling and pagebreaks
+    #"knitr": for styling tables
+required_packages <- c("worded", "knitr") 
+
+for (i in seq(along = required_packages)) {
+  library(required_packages[i], character.only = TRUE)
+}
+```
+
+<!---CHUNK_PAGEBREAK--->
+
+# Copyright and License 
+
+**Source:** 
+
+This case study was designed under a ECDC contract for “Expertise in biostatistics for analysis of surveillance data”.
+
+This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and was modified for R by Thomas Seyler, EpiConcept, July 2015. In 2018 the R version was re-worked by Alexander Spina (correction and updated). 
+
+**Revisions:** 
+
+*If you modify this case study, please indicate below your name and changes you made*  
+
+**You are free:** 
+
+- **to Share** — to copy, distribute and transmit the work 
+- **to Remix** — to adapt the work 
+
+**Under the following conditions:** 
+
+- **Attribution** — 	You must attribute the work in the manner specified by the author or licensor (but not in any way that suggests that they endorse you or your use of the work). The best way to do this is to keep as it is the list of contributors: sources, authors and reviewers. 
+- **Share Alike** — 	If you alter, transform, or build upon this work, you may distribute the resulting work only under the same or similar license to this one. Your changes must be documented. Under that condition, you are allowed to add your name to the list of contributors. 
+- You cannot sell this work alone but you can use it as part of a teaching. 
+
+**With the understanding that:** 
+
+- **Waiver** — Any of the above conditions can be waived if you get permission from the copyright holder. 
+- **Public Domain** — 	Where the work or any of its elements is in the public domain under applicable law, that status is in no way affected by the license. 
+- **Other Rights** — In no way are any of the following rights affected by the license: 
+  - Your fair dealing or fair use rights, or other applicable copyright exceptions and limitations; 
+  - The author's moral rights; 
+  - Rights other persons may have either in the work itself or in how the work is used, such as publicity or privacy rights. 
+- **Notice** — 	For any reuse or distribution, you must make clear to others the license terms of this work by keeping together this work and the current license. 
+
+
+This licence is based on http://creativecommons.org/licenses/by-sa/3.0/
+
+<!---CHUNK_PAGEBREAK---> 
+
+## Objectives of tutorial 
+
+At the end of the tutorial participants should be able to 
+
+- create a plan of analysis for simple time series analysis;
+- use R for exploratory time series analysis including installing the software, importing a dataset, setting time units for aggregation of time series, data checking, trend and seasonality analysis as well as analysis of residuals;
+- understand how to create simple aberration detection algorithms, taking outbreaks into account. 
+
+## Note on the dataset 
+
+The dataset is an original dataset on Campylobacter disease in a European country that has been modified for training purposes. 
+
+## Background to the tutorial 
+
+The objective of the tutorial is to carry out an exploratory time series analysis on Campylobacter data using the TSA tool. The dataset is called *campy.csv*. 
+
+The dataset gives the number of daily cases and contains a time, count and period variable. The table below shows the database dictionary: 
+
+```{r, echo = F}
+
+kable( matrix( c(
+"Variable name", "Variable type",	"Definition",
+"time",	"Daily date",	"Date defined as 'Date used for statistics'",
+"nb",	"Numeric",	"Number of reports",
+"period",	"Numeric",	"The reporting period (e.g. 1=daily; 7=week; 30=month; 90=quarter; etc.)"
+), ncol = 3, nrow = 4, byrow = T)
+)
+
+
+```
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Question 1
+Open the dataset (*campy.csv*) in R and briefly explore it (make sure your working directory is set in R). Import the necessary packages and install the corresponding packages.
+With the assumption that the reporting in the dataset here is stable over time, create an outline of a mini-protocol for TSA, including hypotheses to be tested, a plan of analysis, with specifications for the dataset, inclusion/exclusion criteria, etc. 
+
+<!---CHUNK_PAGEBREAK---> 
+
+
+# Help Question 1 
+
+**For information:** Background on Campylobacteriosis
+
+Campylobacteriosis is a diarrhoeal disease caused by Campylobacter bacteria, found in animals such as poultry, cattle, pigs, wild birds and wild mammals. 
+
+The most frequent way of getting infected is through the consumption of contaminated food (mainly poultry) or water. Other risk factors include swimming in natural surface-waters and direct contact with infected animals. 
+
+After an incubation period 2-5 days (range 1-10 days) common symptoms are severe abdominal pain, watery and /or bloody diarrhoea and fever. Usually, symptoms last for a few days and the disease is self-limiting but occasionally they will persist and result in hospitalisation. Antimicrobial therapy is seldom needed. 
+
+Campylobacter infection has been associated with complications such as later joint inflammation (5-10% of cases) and, on rare occasions, Guillian-Barre syndrome (a temporary but severe paralysis that may be total). 
+
+As prophylactic measure, control of Campylobacter colonisation in poultry is important, as well as hygienic processing of meat, and the protection and control of private drinking water supplies. 
+
+## R-Studio environment
+
+*R-Studio* is an integrated development environment (IDE) for *R*. It includes a console, syntax highlighting editor that supports direct code exucation, as well as tools for plotting, hisotry, debugging and workspace management. You can download it freely from the [*R-Studio* website](https://www.rstudio.com/). 
+
+The *RStudio* window comprises the following sections: 
+
+![](RstudioIDE.png)
+
+
+1. A script which is equivalent to a do file in STATA or pgn in EpiInfo. 
+2. A console where you can write commands and execute them, and where results other than graphs are shown.
+3. A “Environment” and “History” windows where you can find the list of R objects being stored and the log of your session, respectively. 
+4. The “Plots”, “Packages” and “Help” windows, for graphic visualisation, selection of installed packages and help documentation, respectively. 
+
+
+## R-scripts
+Throughout this case study we strongly encourage you to use *R-scripts* to keep track of the commands you are using to follow your plan of analysis. It will contain data management steps as well as descriptive and statistical analysis. 
+
+Open R studio and open a new *R-script*. 
+To open a new *R-script*, click on the plus button on the top left (below File), then select *R-script* from the drop-down menu. 
+
+![](RstudioScript.png) 
+
+
+## Working directory 
+Make sure you have created a working directory on your computer. This is where you store your data and your R scripts and outputs. An example of working directory could be “C:/data/crypto” if you are using a PC.
+To set your working directory you can use the menu function by clicking "Session" > "Set Working Directory" > "Choose Directory..." and then you can select the appropriate folder. 
+
+![](RstudioWorkingDir.png) 
+
+You could alternatively do this by adding code to your *R-script* (or the command line). 
+
+You can check the path for your current working directory using the *getwd* function.
+
+```{r, eval = F}
+#Check your current working directory
+getwd()
+
+```
+
+To set your working directory you can use the *setwd* function. 
+
+```{r, eval = F}
+#set working directory 
+  #note the forward rather than backwards slashes
+setwd("C:/data/crypto")
+
+```
+
+
+## Packages 
+
+R comes with a set of default functions. However one of the strengths of R is that many user-written functions exist to help you do your work. To use them, you first need to install the package they belong to. 
+To do this you can click on "Install" on the bottom right in the "Packages" window. 
+
+![](RstudioPackages.png) 
+
+
+We will mainly use packages which come ready installed with R (base code), but where it makes things easier we will use add-on packages. All the R packages you need for the exercises can be installed over the Internet.
+
+You will need to install these before starting. We will be using the following packages. 
+
+- *ISOweek*: for adjusting dates and switching between units
+- *surveillance*: for fitting time series. 
+
+
+You can also install packages using the *install.packages* function, as below. Do not try to understand this code. 
+
+```{r, eval = F}
+#choose packages required 
+required_packages <- c("ISOweek", "Surveillance")
+
+# Installing required packages for this case study
+for (pkg in required_packages) {
+  if (!pkg %in% rownames(installed.packages())) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+}
+```
+
+
+You only need to install packages once. However you will need to load them each time you start a new session using the *library* function. 
+
+```{r, eval = F}
+library(epiR)
+```
+
+Here too, you can load multiple packages at the same time within a loop; again do not try to understand this just yet, just appreciate it is possible. 
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+
+# Loading required packages for this case study
+for (i in seq(along = required_packages)) {
+  library(required_packages[i], character.only = TRUE)
+}
+```
+
+
+## Reading in data 
+
+Import the dataset from a comma separated value (.csv) file using the *read.csv* function, storing it as a data frame within *R* called campy. The arrow is used to assign the data frame to campy. 
+Here we also specify that we do not want to read in string (character variables) as factors. 
+
+```{r}
+campy <- read.csv("campy.csv", stringsAsFactors = FALSE)
+```
+
+
+## Variable types
+Campy is now a *R* object, of the data frame type. A data frame is simply the how datasets are classified in *R*, thus given class "data.frame". You can check the type of object by typing: class(campy)
+
+Individual variables from the data frame are called using the name of the data frame followed by the **$** sign and the name of the variable. For instance, if you wish to enquire about the type of variables:  
+
+
+```{r, eval = F}
+#check class of variable time
+class(campy$time);
+
+#check class of variable count
+class(campy$count) 
+```
+
+You will notice that the time variable is of class "character". However we want this as a date. You can change this by overwriting the variable using the *as.Date* function. 
+
+```{r}
+#overwrite time variable as a date 
+campy$time <- as.Date(campy$time)
+```
+
+
+# Browse data 
+
+To browse the first six records you can use the *head* function. 
+
+```{r, eval = F}
+#see first six rows of data 
+head(campy)
+```
+
+To get summary statistics of all variables included in the data frame use the *summary* function.
+
+```{r, eval = F}
+#see summary statistics of variables
+summary(campy)
+```
+
+Alternatively you can view the data by clicking on the data by clicking on the data icon to the right of the view. 
+
+![](RstudioView.png) 
+
+You could achieve the same thing by using the *View* function (note the capital V). 
+
+```{r, eval = F}
+#view your dataset 
+View(campy)
+```
+
+
+**Examples of hypotheses to be tested could be:** 
+
+- Is there a trend in the Campylobacter reporting? 
+- If yes, what type of trend is it? 
+- Is there any seasonality in Campylobacter reporting? 
+- If yes, around what time of the year does it occur? 
+- Are the residuals white noise? Or are there other events than random variation? 
+
+**Inclusion/exclusion criteria:** Only records with daily reporting will be considered (drop records with yearly reporting) 
+
+**Time unit for analysis:** Weeks 
+
+**Draft plan of analysis:** 
+
+**Data cleaning** 
+
+- Plot original data 
+- Data description (frequency distributions, summary tables) of all variables 
+- Checks for missing data 
+- Checks for numeric attraction in reporting due to reporting bias, including statistical tests 
+
+**Data description** 
+
+- To better understand the nature of the data 
+  - Plot the data 
+  - Calculate statistical descriptors 
+  - Checks for stationarity 
+    - Check for constant mean (linear regression) 
+    - Check for constant variance (mean vs. Variance plot) 
+  - Checks for autocorrelation 
+    - Autocorrelation 
+    - Partial autocorrelation 
+    - Correlogram
+  - Checks for distribution 
+    - Histogramme 
+    - Symmetry plot 
+    - Normal quantile plot 
+    - Shapiro-Wilk normality test 
+  - Checks for transformations
+  - Moving average (exploring trend and seasonality) 
+- Decomposition of the dataset 
+  - Checks for trend (check R2) 
+  - Checks for seasonality (taking trend into account) 
+    - Spectral analysis, Periodogram 
+    - Check R^2^ of models
+- Residual analysis 
+  - Plot residuals 
+  - Statistical descriptors of residuals 
+  - Checks for stationarity 
+    - Check for constant mean (linear regression) 
+    - Check for constant variance (mean vs. Variance plot) 
+    - Plot of residuals against model 
+  - Checks for autocorrelation 
+    - Autocorrelation 
+    - Partial autocorrelation 
+    - Correlogram 
+  - Checks for distribution 
+    - Histogramme, Symmetry plot, Normal quantile plot 
+    - Shapiro-Wilk normality test 
+  - Test for white noise 
+  - Depending on results of above analyses, carry out transformation, adjust trend/seasonality 
+  - Possible: Simple modelling of data series with 95% CI, taking outbreaks into account (downweighting/removing)
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Question 2 
+
+Make any changes necessary to the dataset. Specify the appropriate time unit for aggregation (start with days). Carry out data checking, including tables and plots of all variables, checks for missing data and checks for numeric attraction by day of week and day of month for possible reporting bias. 
+Interpret your findings. 
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Help Question 2
+
+In the current form, the data frame is daily counts (aggregate counts by date of notification). Dates are unique, i.e. there is only one count reported for each day. 
+You could double check this using the *duplicated* function. 
+
+```{r, eval = F}
+#plot counts by day
+plot(campy$time, campy$count, 
+     main = "Daily Campylobacter notifications, Europe, 2007-2010", 
+     xlab = "days", ylab = "number of cases")
+```
+
+```{r, echo = F}
+
+#This is not shown to participants 
+  #it is just to highlight the higher reporting in december 2008 
+
+clr <- ifelse(campy$count < 700, "black", "red")[-length(campy$count)]
+
+plot(campy$time, campy$count, col = clr, 
+     main = "Daily Campylobacter notifications, Europe, 2007-2010", 
+     xlab = "days", ylab = "number of cases")
+
+```
+
+
+This plot shows the original data. There do appear to be some outliers (e.g. increased reporting at the end of December 2008, highlighted in red). It would be interesting to investigate this further and also go back to the country to ask for more information.
+
+Now check if there are missing values in the dataset. You could either do this with the *summary* function, as in quesiton 1, or you could do the following to get counts of missings for the dataset. 
+
+```{r}
+# get counts of missing values in the dataset 
+sum(is.na(campy))
+```
+
+To check for notification bias, let us plot the number of cases notified by day of the week. The first step is to extract the date of the week from the date (‘date’ variable) by creating a new variable "dayweek". If the language on your computer is not set to english, see the appendix for how to change this and get english days of the week. 
+
+```{r}
+#extract the weekdays from date
+campy$dayweek <- weekdays(campy$time)
+```
+
+
+Make sure the days of the week are in the correct order by making it a factor variable with appropriate levels. 
+
+```{r}
+#change to factor with levels 
+campy$dayweek <- factor(campy$dayweek, 
+                        levels = c("Monday", "Tuesday", "Wednesday", 
+                                   "Thursday", "Friday", "Saturday", "Sunday"))
+```
+
+
+You then need to use the *aggregate* function to collapse your dataset and get counts add the counts for each day together. 
+In the below step, you could also not use the *with* function and instead specify the dataset within *aggregate*. However this produces less useful column names. 
+
+```{r}
+# using campy dataframe 
+  # sum counts by day of the week 
+campy_dayweek <- with(campy, aggregate(count ~ dayweek, FUN = sum))
+```
+
+Next make a bar chart of the number of cases per day of the week over the whole period. 
+You can use the aggregated *campy_dayweek* data in the *barplot* function. You may not see all of the x-labels in the plot window, however if you click the "zoom" button these should appear. 
+
+```{r}
+# plot counts by day 
+  # names.arg is required to label the x axis appropriately
+barplot(campy_dayweek$count, names.arg = campy_dayweek$dayweek, 
+        main = "Number of notified cases by day of the week", 
+        xlab = "Day of the week", 
+        ylab = "Cases")
+```
+
+
+Let us check for numeric attraction by day of the month (think of potential higher notification on the 1st of the month for administrative purposes). As we have seen that there is much fewer notifications during weekends, let us exclude Saturday and Sunday from this analysis. We create a new object that is the copy of ‘campy’ but without all weekend records. 
+
+
+```{r}
+# keep rows from campy that are not saturday or sunday
+campyw <- subset(campy, 
+                 campy$dayweek != "Saturday" & campy$dayweek != "Sunday")
+```
+
+Create a new variable "daynum"", extracting the day of the month from the "time" variable. To do this use the *format* function and specify day using "%d".
+
+We also need to change this to a numeric variable usin gthe *as.numeric* function. 
+
+```{r}
+# create variable with day of month
+  # "%d" specifies that day of month is what you want
+campyw$daynum <- format(campyw$time, "%d")
+
+# change to numeric 
+campyw$daynum <- as.numeric(campyw$daynum)
+```
+
+
+We then need to aggregate the number of cases by day of the month, by creating a new data frame "campyw_daynum",
+
+```{r}
+# using campyw dataframe
+  # sum counts by day
+campy_daynum <- with(campyw, aggregate(count ~ daynum, FUN = sum))
+```
+
+Plot another bar chart. 
+
+```{r}
+barplot(campy_daynum$count, names.arg = campy_daynum$daynum, 
+        main = "Number of notified cases by day of the month (exluding weekends)",  
+        xlab = "Day of the month", 
+        ylab = "Cases")
+```
+
+
+There appears to be numeric attraction by day of week and day of month. The low number of notifications on Saturday and Sunday is likely due to the fact that some health care settings are closed on weekends. This is a strong argument to work with weekly cases. There also appears to be some higher magnitude of reporting on a Tuesday and on the 23rd. This may be influenced by the high reporting on the 23^rd^ of December 2008 (it is a Tuesday). You could do the plots on the data excluding 2008 to see if the graphs change.
+
+
+
+
+
+
+
+
+
+
+
+
+# Appendix
+
+
+## Setting system language to english 
+
+The following code changes your R system locales to english. This is only done for the current session, so each time you open a new R session you would need to set it to english. 
+For a list of language options and the strings to enter see the [windows website](https://docs.microsoft.com/en-us/cpp/c-runtime-library/language-strings?view=vs-2017).
+
+```{r, eval = F}
+Sys.setlocale("LC_ALL", "english_UK")
+```
+
+In order to permanently change your language settings for R, so that you do not need to reset this each time, use the following code to change your *R.profile*. 
+
+```{r, eval = F}
+.First <- function() {
+   Sys.setlocale("LC_ALL", "english_UK")
+   }
+```
+
+
