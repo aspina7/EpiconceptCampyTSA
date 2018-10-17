@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r, echo = F, warning= F, message= F}
+```{r, echo = FALSE, warning= FALSE, message= FALSE}
 #load packages
   #Those required for creating this markdown: 
     #"Worded": for styling and pagebreaks
@@ -79,7 +79,7 @@ The objective of the tutorial is to carry out an exploratory time series analysi
 
 The dataset gives the number of daily cases and contains a time, count and period variable. The table below shows the database dictionary: 
 
-```{r, echo = F}
+```{r, echo = FALSE}
 
 kable( matrix( c(
 "Variable name", "Variable type",	"Definition",
@@ -117,7 +117,7 @@ As prophylactic measure, control of Campylobacter colonisation in poultry is imp
 
 ## R-Studio environment
 
-*R-Studio* is an integrated development environment (IDE) for *R*. It includes a console, syntax highlighting editor that supports direct code exucation, as well as tools for plotting, hisotry, debugging and workspace management. You can download it freely from the [*R-Studio* website](https://www.rstudio.com/). 
+*R-Studio* is an integrated development environment (IDE) for *R*. It includes a console, syntax highlighting editor that supports direct code execution, as well as tools for plotting, history, debugging and workspace management. You can download it freely from the [*R-Studio* website](https://www.rstudio.com/). 
 
 The *RStudio* window comprises the following sections: 
 
@@ -149,7 +149,7 @@ You could alternatively do this by adding code to your *R-script* (or the comman
 
 You can check the path for your current working directory using the *getwd* function.
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #Check your current working directory
 getwd()
 
@@ -157,7 +157,7 @@ getwd()
 
 To set your working directory you can use the *setwd* function. 
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #set working directory 
   #note the forward rather than backwards slashes
 setwd("C:/data/crypto")
@@ -178,15 +178,17 @@ We will mainly use packages which come ready installed with R (base code), but w
 You will need to install these before starting. We will be using the following packages. 
 
 - *ISOweek*: for adjusting dates and switching between units
-- *surveillance*: for fitting time series. 
+- *surveillance*: for fitting time series 
+- *zoo*: for producing rolling statistics
 
 
 You can also install packages using the *install.packages* function, as below. Do not try to understand this code. 
 
-```{r, eval = F}
+```{r}
 #choose packages required 
-required_packages <- c("ISOweek", "Surveillance")
-
+required_packages <- c("ISOweek", "surveillance", "zoo")
+```
+```{r, eval = FALSE}
 # Installing required packages for this case study
 for (pkg in required_packages) {
   if (!pkg %in% rownames(installed.packages())) {
@@ -198,13 +200,13 @@ for (pkg in required_packages) {
 
 You only need to install packages once. However you will need to load them each time you start a new session using the *library* function. 
 
-```{r, eval = F}
-library(epiR)
+```{r, eval = FALSE}
+library(ISOweek)
 ```
 
 Here too, you can load multiple packages at the same time within a loop; again do not try to understand this just yet, just appreciate it is possible. 
 
-```{r, results='hide', message=FALSE, warning=FALSE}
+```{r, results = 'hide', message = FALSE, warning = FALSE}
 
 # Loading required packages for this case study
 for (i in seq(along = required_packages)) {
@@ -229,7 +231,7 @@ Campy is now a *R* object, of the data frame type. A data frame is simply the ho
 Individual variables from the data frame are called using the name of the data frame followed by the **$** sign and the name of the variable. For instance, if you wish to enquire about the type of variables:  
 
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #check class of variable time
 class(campy$time);
 
@@ -249,14 +251,14 @@ campy$time <- as.Date(campy$time)
 
 To browse the first six records you can use the *head* function. 
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #see first six rows of data 
 head(campy)
 ```
 
 To get summary statistics of all variables included in the data frame use the *summary* function.
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #see summary statistics of variables
 summary(campy)
 ```
@@ -267,7 +269,7 @@ Alternatively you can view the data by clicking on the data by clicking on the d
 
 You could achieve the same thing by using the *View* function (note the capital V). 
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #view your dataset 
 View(campy)
 ```
@@ -314,7 +316,7 @@ View(campy)
   - Checks for transformations
   - Moving average (exploring trend and seasonality) 
 - Decomposition of the dataset 
-  - Checks for trend (check R2) 
+  - Checks for trend (check R^2^) 
   - Checks for seasonality (taking trend into account) 
     - Spectral analysis, Periodogram 
     - Check R^2^ of models
@@ -350,14 +352,14 @@ Interpret your findings.
 In the current form, the data frame is daily counts (aggregate counts by date of notification). Dates are unique, i.e. there is only one count reported for each day. 
 You could double check this using the *duplicated* function. 
 
-```{r, eval = F}
+```{r, eval = FALSE}
 #plot counts by day
 plot(campy$time, campy$count, 
      main = "Daily Campylobacter notifications, Europe, 2007-2010", 
      xlab = "days", ylab = "number of cases")
 ```
 
-```{r, echo = F}
+```{r, echo = FALSE}
 
 #This is not shown to participants 
   #it is just to highlight the higher reporting in december 2008 
@@ -373,14 +375,14 @@ plot(campy$time, campy$count, col = clr,
 
 This plot shows the original data. There do appear to be some outliers (e.g. increased reporting at the end of December 2008, highlighted in red). It would be interesting to investigate this further and also go back to the country to ask for more information.
 
-Now check if there are missing values in the dataset. You could either do this with the *summary* function, as in quesiton 1, or you could do the following to get counts of missings for the dataset. 
+Now check if there are missing values in the dataset. You could either do this with the *summary* function, as in question 1, or you could do the following to get counts of missings for the dataset. 
 
 ```{r}
 # get counts of missing values in the dataset 
 sum(is.na(campy))
 ```
 
-To check for notification bias, let us plot the number of cases notified by day of the week. The first step is to extract the date of the week from the date (‘date’ variable) by creating a new variable "dayweek". If the language on your computer is not set to english, see the appendix for how to change this and get english days of the week. 
+To check for notification bias, let us plot the number of cases notified by day of the week. The first step is to extract the date of the week from the date (‘date’ variable) by creating a new variable "dayweek". If the language on your computer is not set to English, see the appendix for how to change this and get English days of the week. 
 
 ```{r}
 #extract the weekdays from date
@@ -420,7 +422,7 @@ barplot(campy_dayweek$count, names.arg = campy_dayweek$dayweek,
 ```
 
 
-Let us check for numeric attraction by day of the month (think of potential higher notification on the 1st of the month for administrative purposes). As we have seen that there is much fewer notifications during weekends, let us exclude Saturday and Sunday from this analysis. We create a new object that is the copy of ‘campy’ but without all weekend records. 
+Let us check for numeric attraction by day of the month (think of potential higher notification on the 1^st^ of the month for administrative purposes). As we have seen that there is much fewer notifications during weekends, let us exclude Saturday and Sunday from this analysis. We create a new object that is the copy of ‘campy’ but without all weekend records. 
 
 
 ```{r}
@@ -431,7 +433,7 @@ campyw <- subset(campy,
 
 Create a new variable "daynum"", extracting the day of the month from the "time" variable. To do this use the *format* function and specify day using "%d".
 
-We also need to change this to a numeric variable usin gthe *as.numeric* function. 
+We also need to change this to a numeric variable using the *as.numeric* function. 
 
 ```{r}
 # create variable with day of month
@@ -455,19 +457,405 @@ Plot another bar chart.
 
 ```{r}
 barplot(campy_daynum$count, names.arg = campy_daynum$daynum, 
-        main = "Number of notified cases by day of the month (exluding weekends)",  
+        main = "Notified cases by day of month (exluding weekends)",  
         xlab = "Day of the month", 
         ylab = "Cases")
 ```
 
 
-There appears to be numeric attraction by day of week and day of month. The low number of notifications on Saturday and Sunday is likely due to the fact that some health care settings are closed on weekends. This is a strong argument to work with weekly cases. There also appears to be some higher magnitude of reporting on a Tuesday and on the 23rd. This may be influenced by the high reporting on the 23^rd^ of December 2008 (it is a Tuesday). You could do the plots on the data excluding 2008 to see if the graphs change.
+There appears to be numeric attraction by day of week and day of month. The low number of notifications on Saturday and Sunday is likely due to the fact that some health care settings are closed on weekends. This is a strong argument to work with weekly cases. There also appears to be some higher magnitude of reporting on a Tuesday and on the 23^rd^. This may be influenced by the high reporting on the 23^rd^ of December 2008 (it is a Tuesday). You could do the plots on the data excluding 2008 to see if the graphs change.
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Question 3 
+
+Describe the time series: 
+
+- Plot the time series aggregated by time unit of interest 
+- Check the data for stationarity, autocorrelation , distribution and for possible transformations of the data. Interpret your findings and plan next steps. 
+  - Note: we do not expect data to be stationary, autocorrelated or normally distributed before it has been decomposed. This is nevertheless an important part in descriptive analysis. 
+- Use the “moving average” to explore possible trends and seasonality within the time series
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Help Question 3
+
+The first thing to do is to create a data frame where the counts are aggregated by week. Be careful, there are different methods to build the week of the year. Here we will use the *ISOweek* function (part of *ISOweek* package). 
+
+```{r}
+# create a variable with week 
+campy$week <- ISOweek(campy$time)
+```
+
+Have a look at the new variable
+
+```{r, eval = FALSE}
+# look at first few rows
+head(campy$date) 
+
+# look at your dataset 
+View(campy$date)
+```
+
+As before, use the aggregate function to sum the cases by ISO-week. 
+
+```{r}
+# using campy dataframe
+  # sum counts by week
+campy_week <- with(campy, aggregate(count ~ week, FUN = sum))
+```
+
+We will then create a Time-Series object. These are vector or matrices with class of "ts" (and additional attributes) which represent data that have been sampled at equispaced points in time. In the matrix case, each column of the matrix data is assumed to contain a single (univariate) time series. Working with a Time-Series object will make it easier to analyse the time series. We only keep the counts variable and then define the time unit of the new object by specifying the starting point (beginning of first week of 2007) and the frequency (52 weeks). 
+
+```{r} 
+# Create time series only using campy$week
+campy_ts <- ts(campy_week$count, start = c(2007, 0), end = c(2010, 52), frequency = 52)
+```
+
+```{r, eval = FALSE}
+# check the class of camp_ts
+class(campy_ts)
+```
+
+You can visualise the data from the time series object, look at basic descriptive statistics and check for missing values. 
+
+```{r, eval = FALSE}
+# view your timeseries object 
+campy_ts
+
+# get descriptive statistics 
+summary(campy_ts)
+
+# check missings 
+sum(is.na(campy_ts))
+```
+
+Plot your time series. 
+
+```{r}
+#Plot time series by week 
+plot(campy_ts, main = "Weekly cases, UK, 2007-2010", 
+     ylab = "Number of cases", xlab = "Week of notification")
+```
+
+Examine the distribution of counts per week. 
+
+```{r}
+#plot histogram of counts occurences
+hist(campy_ts)
+```
 
 
 
 
 
 
+
+### NEED TO FIND A FUNCTION FOR SKEWNESS AND KURTOSIS (OTHERWISE JUST USE A PACKAGE!!) 
+####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+
+
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+
+## Checks for stationarity 
+
+### Linear regression 
+
+Simply speaking, a time series is stationary if its mean level and variance stay steady over time, or as explained by Hyndman and Athana¬sopou¬los (2013): “[a] stationary time series is one whose properties do not depend on the time at which the series is observed”. 
+
+We can use linear regression to check whether the mean is constant over time:
+We first define the time variable as "t", ranging from week 1 to week 209, covering the whole period: 
+
+```{r}
+# define number of timepoints
+t <- 1:209
+```
+
+We can then use our time-series data frame and the time variable in a linear regression using the *lm* function. 
+
+```{r}
+# run linear regression for counts over time
+linreg <- lm(campy_ts ~ t) 
+```
+
+
+It is possible to apply the *summary* function to this regression in order to get a nicely formatted output. 
+
+```{r}
+# view output of regression
+summary(linreg) 
+```
+
+
+
+There appears to be an upwards trend in the data. On average, there are 2.11 more cases notified every week. 
+We can also use linear regression to check whether the variance is constant over time.
+
+We first need to calculating a rolling standard deviation. In this case we choose a moving window of 10 weeks. This means that for each time point a standard deviation is calculated based on the five points before and after. 
+
+```{r}
+# produce a centred rolling standard deviation with 10 week window
+variance <- rollapply(data = campy_ts, width = 10, FUN = sd, fill = NA)
+```
+
+```{r}
+
+# run linear regression of standard deviation over time
+variancereg <- lm(variance ~ t)
+
+# view output of linear regression 
+summary(variancereg)
+```
+
+There does not appear to be a significant difference in variance over time. 
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+## Checks for autocorrelation
+
+Does the series correlate with itself, and for what lags?
+
+In order to do estimate autocorrelation we will use the *acf* function. This function also creates a plot, however we will not use the plotting function immediately. 
+
+```{r}
+# estimate autocorrelation without plotting
+acplot <-  acf(campy_ts, plot = FALSE)
+```
+
+We then need to transform lags from years to weeks by multiplying the lag variable by 52 (number of weeks in a year). 
+
+```{r}
+# change lag from years to weeks
+acplot$lag <- acplot$lag * 52
+```
+
+Then you can use the regular plot function to visualise these estimates. 
+```{r}
+# plot your autocorrelation graph
+plot(acplot, main = "Autocorrelation", xlab = "Lag (week)")
+```
+
+The first line on this autocorrelation graph shows the correlation between each obsersation and itself (at lag zero, therefore always 1), the second shows correlation between each observation and the preceding one (lag one), and so on. 
+Blue lines show the 95% confidence intervals. Where lines go above or below this there is significant autocorrelation (in order to produce a similar confidence intervals to Stata, add *ci.type = "ma"* to the *acf* function). 
+This graph therefore shows substantial autocorrelation in the data. 
+
+We now need to investigate possible seasonality (or periodicity). 
+To do this we use the *pacf* function for partial autocorrelation. Essentially what this does, is adjust the autocorrelation in each observation for any autocorrelation from previous observations. 
+
+
+```{r}
+# estimate partial autocorrelation without plotting
+pacplot <- pacf(campy_ts, plot = FALSE) 
+
+# change lag from years to weeks
+pacplot$lag <- pacplot$lag * 52
+
+# plot your partial autocorrelation graph
+plot(pacplot, main = "Partial Autocorrelation", xlab = "Lag (week)")
+
+```
+
+The partial autocorrelation graph shows autocorrelation at the first lag and further autocorrelation at around the 5th and 18/19th lag. The seasonal component of this time series needs to be examined. 
+
+
+
+## Checks for normality 
+
+Begin by visually inspecting the data. 
+We can plot a histogram of the data using *hist* and add a normal curve by combining the *curve* and *dnorm* functions. In this case we want to plot probability density rather than frequency on our histogram. 
+
+
+```{r}
+#plot your histogram defining labels and breaks
+hist(campy_ts, probability = TRUE, 
+     main = "Distribution with normal curve", 
+     xlab = "counts", 
+     breaks = 15
+     )
+
+#plot your normal curve on top
+curve(dnorm(x, mean = mean(campy_ts), sd = sd(campy_ts)), 
+            add = TRUE, col = "darkblue", lwd = 2)
+```
+
+You can also inspect this using a normal quantile plot (or QQ-plot). To do this combine the *qqnorm* and *qqline* functions. If the dots do not follow the straight line then it is indicative of a non-normal distribution.
+
+```{r}
+# quantile plot for the data
+qqnorm(campy_ts)
+qqline(campy_ts)
+```
+
+Both of these plots show that the data is skewed and not normally distributed.
+
+This can also be show statistically using the shapiro-Wilk test for normality. This shows significant deviation from normal, so we may need to consider transforming the data.  
+
+```{r}
+# run shapiro-wilk test on data
+shapiro.test(campy_ts)
+```
+
+## Check transformations
+
+We will check transforming using square-root, log and square. 
+
+First try the square-root using the *sqrt* function. 
+```{r}
+# check transformation by square-root 
+
+# apply square-root to your dataset
+sqrtcampy_ts <- sqrt(campy_ts)
+
+# plot your histogram defining labels and breaks
+hist(sqrtcampy_ts, probability = TRUE, 
+     main = "square-root", 
+     xlab = "counts", 
+     breaks = 15
+     )
+
+# plot your normal curve on top
+curve(dnorm(x, mean = mean(sqrtcampy_ts), sd = sd(sqrtcampy_ts)), 
+            add = TRUE, col = "darkblue", lwd = 2)
+
+
+
+# run shapiro-wilk test on data
+shapiro.test(sqrtcampy_ts)
+```
+
+Next try log transformation using the *log* function. 
+
+```{r}
+
+# check transformation by log 
+
+# apply square-root to your dataset
+logcampy_ts <- log(campy_ts)
+
+# plot your histogram defining labels and breaks
+hist(logcampy_ts, probability = TRUE, 
+     main = "Log", 
+     xlab = "counts", 
+     breaks = 15
+     )
+
+# plot your normal curve on top
+curve(dnorm(x, mean = mean(logcampy_ts), sd = sd(logcampy_ts)), 
+            add = TRUE, col = "darkblue", lwd = 2)
+
+
+# run shapiro-wilk test on data
+shapiro.test(logcampy_ts)
+
+```
+
+Finally, try transforming by the square by raising the data to the power of 2. 
+
+```{r}
+
+
+# check transformation by square 
+
+# apply square-root to your dataset
+sqcampy_ts <- campy_ts^2
+
+# plot your histogram defining labels and breaks
+hist(sqcampy_ts, probability = TRUE, 
+     main = "Square", 
+     xlab = "counts", 
+     breaks = 15
+     )
+
+# plot your normal curve on top
+curve(dnorm(x, mean = mean(sqcampy_ts), sd = sd(sqcampy_ts)), 
+            add = TRUE, col = "darkblue", lwd = 2)
+
+
+# run shapiro-wilk test on data
+shapiro.test(sqcampy_ts)
+
+```
+
+The transformation that renders the original time series most normal is the square root (W = 0.98762, p-value = 0.06633). However, does this transformation make sense? A log transformation and also no transformation should also be considered. 
+
+# Moving average 
+
+We now want to use moving averages to investigate possible trends and seasonality. 
+We can calculate these using the *rollapply* function. Similar to how we calculated the standard deviation when checking for variation over time. 
+We will calculate the centred moving average for several different time windows. Try for example to do one each for 52 weeks, 26 weeks and 13 weeks. 
+
+```{r}
+# calculate annual moving average
+ma52 <- rollapply(campy_ts, width = 52, FUN = mean)
+```
+
+We can then plot this using the *ts.plot* function. 
+
+```{r}
+# plot your timeseries with annual moving average
+ts.plot(campy_ts, ma52, 
+        main = "Weekly cases and moving average of 52 weeks, Campylobacter cases, 2007-2010", 
+        ylab = "number of cases", 
+        xlab = "week of notification")
+```
+
+
+Now try the same for a 26 week window. 
+
+```{r}
+# calculate 26 weekly moving average
+ma26 <- rollapply(campy_ts, width = 26, FUN = mean)
+
+# plot your timeseries with annual moving average
+ts.plot(campy_ts, ma26, 
+        main = "Weekly cases and moving average of 26 weeks, Campylobacter cases, 2007-2010", 
+        ylab = "number of cases", 
+        xlab = "week of notification")
+```
+
+
+
+And now do the same for a 13 week window. 
+
+```{r}
+# calculate 13 weekly moving average
+ma13 <- rollapply(campy_ts, width = 13, FUN = mean)
+
+# plot your timeseries with annual moving average
+ts.plot(campy_ts, ma13, 
+        main = "Weekly cases and moving average of 13 weeks, Campylobacter cases, 2007-2010", 
+        ylab = "number of cases", 
+        xlab = "week of notification")
+```
+
+
+It is also possible to decompose a time series automatically  into seasonal, trend and irregular components using moving averages with the *decompose* function. 
+
+```{r}
+plot(decompose(campy_ts))
+```
+
+In the UK, there appears to be an increasing annual trend in Campylobacter reports from 2007 to 2010 (this can be seen with the moving average of 51 weeks). There appears also to be an annual peak of reports in the summer (can be seen with the moving average of 25 weeks). The moving average window of 13 weeks, gives more information and shows that there appears to be a peak in early summer and a second smaller peak after the summer. 
+Without more background it is difficult to judge whether the trend is a real trend, the peaks are real peaks or they are perhaps due to batch reporting. However a literature search indicates that Great Britain has marked seasonal peaks in Campylobacter enteritis occurring in May and September (“Investigation of Faecal Specimens for Bacterial Pathogens”; National Standards Methods, 2010. http://www.hpa-standardmethods.org.uk/documents/bsop/pdf/bsop30.pdf [Accessed October 2011]). 
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+
+# Question 4 
+Decompose the time series: 
+- Decide on an appropriate trend to use 
+- With the trend removed, analyse seasonality 
+  - What seasonality will you include in a final model? Why?
 
 
 
@@ -479,19 +867,11 @@ There appears to be numeric attraction by day of week and day of month. The low 
 
 ## Setting system language to english 
 
-The following code changes your R system locales to english. This is only done for the current session, so each time you open a new R session you would need to set it to english. 
+The following code changes your R system locales to English. This is only done for the current session, so each time you open a new R session you would need to set it to English. 
 For a list of language options and the strings to enter see the [windows website](https://docs.microsoft.com/en-us/cpp/c-runtime-library/language-strings?view=vs-2017).
 
 ```{r, eval = F}
 Sys.setlocale("LC_ALL", "english_UK")
 ```
 
-In order to permanently change your language settings for R, so that you do not need to reset this each time, use the following code to change your *R.profile*. 
-
-```{r, eval = F}
-.First <- function() {
-   Sys.setlocale("LC_ALL", "english_UK")
-   }
-```
-
-
+In order to permanently change your language settings for R (so that you do not need to reset this each time) you have to change your startup settings. To do this (on Windows OS), copy and paste the above line of code in to your *Rprofile.site*, which you would find in the R > etc folder. Normally this would be in programme files but it depends where you installed R. 
