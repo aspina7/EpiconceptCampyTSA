@@ -29,7 +29,7 @@ for (i in seq(along = required_packages)) {
 
 This case study was designed under a ECDC contract for “Expertise in biostatistics for analysis of surveillance data”.
 
-This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and was modified for R by Thomas Seyler, EpiConcept, July 2015. In 2018 the R version was re-worked by Alexander Spina (correction and updated). 
+This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and was modified for R by Thomas Seyler, EpiConcept, July 2015. In 2018 the R version was re-worked by Alexander Spina (correction and updated); some parts of code were adapted from the EPIET time series analysis module case studies. 
 
 **Revisions:** 
 
@@ -684,7 +684,7 @@ hist(campy_ts, probability = TRUE,
 
 #plot your normal curve on top
 curve(dnorm(x, mean = mean(campy_ts), sd = sd(campy_ts)), 
-            add = TRUE, col = "darkblue", lwd = 2)
+            add = TRUE, col = "red", lwd = 2)
 ```
 
 You can also inspect this using a normal quantile plot (or QQ-plot). To do this combine the *qqnorm* and *qqline* functions. If the dots do not follow the straight line then it is indicative of a non-normal distribution.
@@ -724,7 +724,7 @@ hist(sqrtcampy_ts, probability = TRUE,
 
 # plot your normal curve on top
 curve(dnorm(x, mean = mean(sqrtcampy_ts), sd = sd(sqrtcampy_ts)), 
-            add = TRUE, col = "darkblue", lwd = 2)
+            add = TRUE, col = "red", lwd = 2)
 
 
 
@@ -750,7 +750,7 @@ hist(logcampy_ts, probability = TRUE,
 
 # plot your normal curve on top
 curve(dnorm(x, mean = mean(logcampy_ts), sd = sd(logcampy_ts)), 
-            add = TRUE, col = "darkblue", lwd = 2)
+            add = TRUE, col = "red", lwd = 2)
 
 
 # run shapiro-wilk test on data
@@ -777,7 +777,7 @@ hist(sqcampy_ts, probability = TRUE,
 
 # plot your normal curve on top
 curve(dnorm(x, mean = mean(sqcampy_ts), sd = sd(sqcampy_ts)), 
-            add = TRUE, col = "darkblue", lwd = 2)
+            add = TRUE, col = "red", lwd = 2)
 
 
 # run shapiro-wilk test on data
@@ -856,6 +856,391 @@ Decompose the time series:
 - Decide on an appropriate trend to use 
 - With the trend removed, analyse seasonality 
   - What seasonality will you include in a final model? Why?
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Help Question 4 
+
+## Regression type
+
+We are using counts data, where sometimes Poisson regression or negative binomial regression (if overdispersion is present) may be indicated. However we have very high counts, with all counts per week exceeding 500. In addition, the histogram does not look particularly Poisson distributed. Therefore it may make sense to use linear regression in the first instance. At residual analysis stage we can then verify if this choice is appropriate. 
+A next step may be to decide if the data follow a linear or a quadratic trend. Look at the graphs and regression outputs for both trends. 
+
+First, define your time variable. The last time variable we defined by typing in the upper limit as a fixed value, however we can similarly make reference to the length of our time series object. 
+
+```{r}
+# define time variable (number of weeks) 
+t <- 1:length(campy_ts)
+```
+
+We now run a linear regression as previously, showing the summary as well as the confidence intervals. 
+
+```{r}
+# run linear regression for counts over time
+linreg <- lm(campy_ts ~ t) 
+
+# view output of regression
+summary(linreg) 
+
+# view confidence intervals 
+confint(linreg)
+```
+
+We can then plot the fitted values together with our observed data, similar to moving averages above, using the *ts.plot* function. 
+
+
+```{r}
+ts.plot(campy_ts, linreg$fitted.values, 
+        col = c("black", "red"), 
+        main = "linear trend")
+```
+
+For a quadratic model we need to first square our time variable and then run it together with the previous linear regression. 
+
+```{r}
+# create a new squared timed variable
+t2 <- t^2
+
+# run linear regression 
+quadreg <- lm(campy_ts ~ t + t2)
+
+# view output 
+summary(quadreg) 
+
+# plot with observed data 
+ts.plot(campy_ts, quadreg$fitted.values, 
+        col = c("black", "red"), 
+        main = "linear quadratic trend")
+```
+
+
+The adjusted  R^2^ of the model with a quadratic trend (R^2^=0.106) is slightly low than the R^2^ of the model with a linear trend (R^2^= 0.109). However the difference between these values is minimal. In addition, R^2^ values do not take the complexity of the model into account (a quadratic model is more complex than a linear model). We can examine the Akaike Information Criterion (AIC), which takes model complexity into account. 
+
+```{r}
+# view linear regression AIC 
+AIC(linreg) 
+
+# view quadratic AIC
+AIC(quadreg)
+```
+
+
+The AIC for the model with a linear trend is 3054.5 and the AIC for the model with quadratic trend is 3056.4 (the smaller the AIC the better the fit). The difference is negligible. We may want to use the principle of parsimony and continue our modelling using the simpler model, with the linear trend. 
+
+Conclusions: 
+In the overall dataset, we see an upwards trend over time, which we expected from the results of the moving average analysis. The regression output shows a coefficient of 2.11 which indicates an increase of 2.11 cases for each week in the dataset. The p-value is highly significant, which can also be a reflection of the high sample size. 
+It appears that the trend is increasing, but we cannot conclude that without more information on the surveillance system and reporting practices. 
+Please also note that for educational purposes we are using linear regression to model the trend here – linear regression may only be used if the data show no signs of overdispersion, which is rare in count data. However if counts are very high, then the distribution may approximate the normal distribution in which case it is OK to use linear regression. 
+Furthermore, it is important that we have no missing data. If this were the case, it would be important to set actions for NA values when running the *lm* function (see the help section for more). 
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+
+# Seasonality 
+
+We will check for seasonality on the data after the trend is removed, however we get basically the same results if we check for seasonality on the original data.
+We can find the most important periods in the data by doing a spectral analysis. This can be done using the *spec.pgram* function.  
+
+
+
+```{r}
+
+# get spectrograme with detrended 
+periodo <- spec.pgram(campy_ts, detrend = TRUE)
+
+```
+
+To plot the periodogram appropriately we need to divide the frequencies by 52, as it is originally given in years. 
+
+From the periodogram we can see that there may be several important periods. The first period of importance is obviously 55 weeks, after that we see 1 or 2 further important peaks. 
+
+```{r}
+# plot spectogram as weeks (rather than years)
+plot(1/(periodo$freq/52), log(periodo$spec), 
+      type = 'l',
+      xlim = c(0, 209), 
+      xlab = "Period (Weeks)", ylab = "Log(density)")
+```
+
+
+We can extract the frequencies with the highest peaks and extract the weeks  – note that you need to use the *order* function in combination with the negative sign to sort the output based on highest first. 
+
+```{r}
+# extract important weeks 
+  # multiply by 52 because currently in years
+1 / periodo$freq[order(-periodo$spec)] * 52
+
+```
+
+We can see that after a period of 54, the period of 18 is most important. This is approximately a third of a year, so this may be a plausible further period to explore. The next most important period is 27, which is around half a year, again a possible plausible period to explore.
+Let’s just start with the most important period of 54 weeks. We can create a sine and cosine for this period and add it to our model with the linear trend. 
+
+```{r}
+# defining sine and cosine terms
+sin52 <- sin(2 * pi * t / 52) 
+cos52 <- cos(2 * pi * t / 52) 
+```
+
+
+Once you have defined your sine and cosine, you can add these to a linear regression as before. 
+
+
+```{r}
+# run linear regression for counts over time
+linreg2 <- lm(campy_ts ~ t + sin52 + cos52) 
+
+# view output of regression
+summary(linreg2) 
+
+# view confidence intervals 
+confint(linreg2)
+```
+
+The adjusted R-squared is now around 0.71. This is a great improvement over the R-squared from the model just with a linear trend. 
+The sine and cosine parameters are also statistically significant. 
+We can look at the graph associated with the model. 
+
+```{r}
+ts.plot(campy_ts, linreg2$fitted.values, 
+        col = c("black", "red"), 
+        main = "Fitted trend 52 week period")
+```
+
+
+The model does not look too bad, but it does not capture the dual peaks that we see in the data. 
+We can now see if a further period improves our model. We create further sine and cosine terms and can add these to the model. 
+
+
+
+```{r}
+# defining sine and cosine terms
+sin17 <- sin(2 * pi * t / 17.3) 
+cos17 <- cos(2 * pi * t / 17.3) 
+
+# run linear regression for counts over time
+linreg3 <- lm(campy_ts ~ t + + sin52 + cos52 + sin17 + cos17) 
+
+# view output of regression
+summary(linreg3) 
+
+# view confidence intervals 
+confint(linreg3)
+```
+
+We can see that all sine and cosine terms are significant. The adjusted R-squared is around 0.78. The adjusted R-squared for the previous model was around 0.71 – therefore the new model is quite a big improvement. 
+
+
+We can also compare the AIC for these models
+
+```{r}
+# show AIC for both models
+AIC(linreg2)
+AIC(linreg3)
+```
+
+The AIC for the model with the extra seasonal term is 2771, which is substantially lower than the AIC with only one seasonal term. 
+
+We can also plot the new model. 
+
+
+```{r}
+ts.plot(campy_ts, linreg3$fitted.values, 
+        col = c("black", "red"), 
+        main = "Fitted trend 52 and 17 week period")
+```
+
+This graphs explains the data better. We can see the double peak in the data around the late spring/summer and early autumn period. 
+We also see a third “peak” at the beginning of the year, which we do not necessarily expect in terms of disease. This may however reflect changes in reporting around Christmas and Easter time. 
+From the periodogram, we also saw that a period of 26 may also be an important period. We could try and see if adding this period improves the model substantially. 
+
+
+
+
+```{r}
+# defining sine and cosine terms
+sin26 <- sin(2 * pi * t / 26) 
+cos26 <- cos(2 * pi * t / 26) 
+
+# run linear regression for counts over time
+linreg4 <- lm(campy_ts ~ t + + sin52 + cos52 + sin17 + cos17 + sin26 + cos26) 
+
+# view output of regression
+summary(linreg4) 
+
+# view confidence intervals 
+confint(linreg4)
+
+# view AIC for regression 
+AIC(linreg4)
+```
+
+The model including 3 periods still shows that all sine and cosine parameters are significant. The adjusted R2 is now around 0.80. While this is higher than the last model, which had an adjusted R-squared of around 0.78, it is not substantially higher. The AIC is around 2748, which is lower than the previous one at 2771. 
+
+If we graph the model, we can see that the model fits the data well, but it is difficult to visually see the difference between the previous and current model. 
+
+
+```{r}
+ts.plot(campy_ts, linreg4$fitted.values, 
+        col = c("black", "red"), 
+        main = "Fitted trend 52 and 17 and 26 week period")
+```
+
+The model with just 2 seasonal terms may be an adequate model, given the principle of parsimony, however the model with 3 seasonal terms is interesting too. The detail of the model we are interested in depends on the objectives of our time series analysis. 
+Before choosing a final model, we also need to analyse the residuals. 
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Question 5 
+
+Analyse the residuals of the model containing a linear trend and seasonality with two periods: 52 and 17.33 weeks.  
+You can check for normality, check stationarity and for autocorrelation. 
+What do you conclude? What would be your next steps? 
+
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Help Question 5 
+
+
+## Initial inspection 
+
+We can extract the residuals quite simply from a linear regression and plot them. 
+In this case we go back to linreg3 which contained periods of 52 and 17.33 weeks. 
+
+```{r} 
+# plot residuals of linear regression 
+ts.plot(linreg3$residuals)
+```
+
+
+When looking at the residual plot it looks like there may be some leftover seasonality. Therefore we may want to bear in mind that the model with 3 seasonal terms may be better.
+
+
+
+## Normality 
+
+
+```{r}
+#plot your histogram defining labels and breaks
+hist(linreg3$residuals, probability = TRUE, 
+     main = "Distribution of residuals with normal curve", 
+     xlab = "counts", 
+     breaks = 15
+     )
+
+#plot your normal curve on top
+curve(dnorm(x, mean = mean(linreg3$residuals), 
+            sd = sd(linreg3$residuals)), 
+            add = TRUE, col = "red", lwd = 2)
+
+```
+
+
+
+```{r}
+# run shapiro-wilk test on data
+shapiro.test(linreg3$residuals)
+```
+
+The histogram is skewed to the right and the Shapiro-Wilk test for normality is significant, which tells us the data are not compatible with the normal distribution. We can also look at summary statistics. 
+
+
+### NEED TO FIND A FUNCTION FOR SKEWNESS AND KURTOSIS (OTHERWISE JUST USE A PACKAGE!!) 
+####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+We see that there is some skewness in the data (it is positive, so it is skewed to the right) and also a kurtosis that is higher than 3. The mean and the median are different. This could indicate a presence of outbreaks. It may be worth revising the seasonality – to see if we adequately described seasonality.
+
+
+## Stationarity 
+
+If there is a trend in the dataset then it is not stationary. However we removed the trend with the regression earlier, so we are pretty sure that at least there is no linear trend left. 
+
+
+```{r}
+
+# regress residuals against time
+residreg <- lm(linreg3$residuals ~ t) 
+
+
+# view output of regression 
+summary(residreg)
+
+```
+
+We could plot this regression against our residuals. 
+
+
+```{r}
+
+# plot residuals 
+plot(linreg3$residuals) 
+
+# add line from regression 
+abline(residreg)
+
+```
+
+We can see that the coefficient is close to 0 and that slope is not statistically significant from a straight line. 
+
+It would also be possible to investigate that the variance is constant by comparing variance against the mean. We could use a 5-week interval for this. 
+
+
+
+```{r}
+
+# calculate variance and mean means
+varianceresid <- rollapply(linreg3$residuals, width = 5, FUN = var, fill = NA)
+meanresid <- rollapply(linreg3$residuals, width = 5, FUN = mean, fill = NA)
+
+
+# linear regression
+
+residreg_mean <- lm(meanresid ~ varianceresid)
+
+# view linear outcome 
+summary(residreg_mean)
+
+# plot regression 
+plot(varianceresid, meanresid)
+abline(residreg_mean) 
+
+```
+
+While there are some outliers, there are very few. This plot shows that we can be happy that the residuals are stationary.
+
+## Autocorrelation 
+
+
+
+We can check for autocorrelation using the *acf* function. This function also creates a plot.
+
+```{r}
+# estimate autocorrelation without plotting
+acplotresid <-  acf(linreg3$residual)
+```
+
+The ACF plot shows us that our data are highly correlated at early lags, which is expected from surveillance data. We also see that a seasonal pattern still remains in the residuals, even if it is not significant. 
+This indicates that it may be worth checking the residuals of the model with the further seasonal term (of 26 weeks). 
+And in fact, what we see that the normality of residuals is not improved in the model with 3 seasonal terms. The data remain stationary (no increasing variance with increasing mean). However the ACF plot is improved. There is still autocorrelation among the first few lags, but it is lower and we see less of a seasonal pattern remaining in the residuals. 
+
+<!---CHUNK_PAGEBREAK---> 
+
+# Question 6 
+
+Using the model containing a linear trend and two seasonal periods at 52 and 17.33 weeks, model the data including 95% prediction interval and graph them. 
+
+In a second step, downweight outliers that are above 2 standard deviations of the model. In public health models that downweight outliers a variety of weights are used. Here we will use a very simple weight of 1/(square of the standardised residuals). This means that the higher the outlier, the lower the weight will be assigned to them. Create the new model and 95% detection intervals and graph them. 
+
+How do you interpret these models and what do you conclude?
+
+
+<!---CHUNK_PAGEBREAK---> 
+# Help Question 6 
+
+
+
+
 
 
 
