@@ -1019,7 +1019,7 @@ sin17 <- sin(2 * pi * t / 17.3)
 cos17 <- cos(2 * pi * t / 17.3) 
 
 # run linear regression for counts over time
-linreg3 <- lm(campy_ts ~ t + + sin52 + cos52 + sin17 + cos17) 
+linreg3 <- lm(campy_ts ~ t + sin52 + cos52 + sin17 + cos17) 
 
 # view output of regression
 summary(linreg3) 
@@ -1236,12 +1236,98 @@ How do you interpret these models and what do you conclude?
 
 
 <!---CHUNK_PAGEBREAK---> 
+
+
 # Help Question 6 
 
+Retrieving prediction intervals is possible using the *predict* function on your regression of choice. This can then be plotted along with your time series data as previously. 
+
+```{r}
+
+# retrieve your 95% prediction intervals from regression
+pred_int <- predict(linreg3, interval = "prediction", level = 0.95)
+
+# plot 
+ts.plot(campy_ts, pred_int,
+        col = c("black", "red", "blue", "blue"),
+        main = "Original data, fitted values and 95% prediction interval")
+
+legend("top", 
+       lwd = 1, 
+       horiz = TRUE, 
+       col = c("black", "red", "blue"),
+       legend = c("Observed", "Expected", "95%pi"))
+
+```
 
 
+So we can see that at certain points the data exceed the intervals. These outliers may represent outbreaks. However we have also been including these data points to estimate the model and the prediction intervals to determine what is expected. This will artificially inflate our prediction intervals. 
 
 
+We could take these outliers into account when estimating our model and create 95% detection intervals around it. There are very many ways of taking outliers into account. Here we will use a simple method of downweighting outliers. This is an empirical approach and the weight given to the outliers can be adjusted according to how the model performs. 
+
+This approach will be done in several steps: 
+
+- We will identify outliers as those exceeding the model by 2 standard deviations. For this we will standardise our residuals. This means that we subtract the mean from the residual and divide this by the standard deviation of the residuals. 
+- We will create a weight that will be defined as one for data points that are not outliers, and as 1/((standardised residual)^2^) for outliers. 
+- We will create a new variable for counts that will contain the original counts, but with the outliers downweighted. These outliers will be defined as 2 standard deviations above the model plus the exceedance above this weighted by the weighting factor. 
+
+
+```{r, warning = FALSE}
+
+# extract the standard deviations for each point
+stdres <- residuals(linreg3) / sigma(linreg3)
+
+# create weights 
+  # if standard deviation greater than 2 then
+  # 1 / stdres^2 otherwise 1
+wts <- ifelse(stdres > 2, 
+              1 / (stdres^2), 1)
+
+
+# modify counts 
+campy_tswtd <- campy_ts * wts
+
+
+# run linear regression for counts over time
+linreg3wtd <- lm(campy_tswtd ~ t + sin52 + cos52 + sin17 + cos17)
+
+
+# retrieve your 95% prediction intervals from regression
+pred_intwtd <- predict(linreg3wtd, interval = "prediction", level = 0.95)
+
+# plot 
+ts.plot(campy_ts, pred_intwtd,
+        col = c("black", "red", "blue", "blue"),
+        main = "Original data, fitted values and 95% prediction interval")
+
+legend("top", 
+       lwd = 1, 
+       horiz = TRUE, 
+       col = c("black", "red", "blue"),
+       legend = c("Observed", "Expected", "95%pi"))
+
+```
+
+
+The difference between the model not taking and taking outliers into account is not large in this example. Depending on your objectives for time series analysis, you can adjust the weighting and the definition of what is an outlier (e.g. from 2 standard deviations to 1.5 standard deviations). This can lead to a more or less sensitive model. 
+
+
+<!---CHUNK_PAGEBREAK--->  
+
+# Question 7 
+
+Using the surveillance package, try other detection algorithms and compare how they perform (sensitivity, specificity, positive predictive value) by varying their parameters: 
+
+- The Early Aberration Detection System (EARS) used by CDC 
+- The CDC algorithm used by CDC 
+- The Farrington method used by PHE 
+- The CUSUM method 
+- The GLRNB method
+
+<!---CHUNK_PAGEBREAK--->  
+
+# Help Question 7 
 
 
 
