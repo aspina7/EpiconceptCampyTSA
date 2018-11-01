@@ -178,7 +178,7 @@ We will mainly use packages which come ready installed with R (base code), but w
 You will need to install these before starting. We will be using the following packages. 
 
 - *ISOweek*: for adjusting dates and switching between units
-- *surveillance*: for fitting time series 
+- *surveillance*: for fitting time series and detection algorithms
 - *zoo*: for producing rolling statistics
 
 
@@ -1317,7 +1317,7 @@ The difference between the model not taking and taking outliers into account is 
 
 # Question 7 
 
-Using the surveillance package, try other detection algorithms and compare how they perform (sensitivity, specificity, positive predictive value) by varying their parameters: 
+Using the *surveillance package*, try other detection algorithms and compare how they perform (sensitivity, specificity, positive predictive value) by varying their parameters: 
 
 - The Early Aberration Detection System (EARS) used by CDC 
 - The CDC algorithm used by CDC 
@@ -1328,6 +1328,152 @@ Using the surveillance package, try other detection algorithms and compare how t
 <!---CHUNK_PAGEBREAK--->  
 
 # Help Question 7 
+
+
+## Creating a *sts* object for using surveillance package 
+
+This section is based on *Salmon, Schumacher and Höhle, 2014*. They provide a good overview of the surveillance package and the detection algorithms they use. The first step is to create a surveillance time series object (*sts*) based on our weekly aggregates, similarly to how we made a time series object previously. 
+
+```{r}
+
+# define surveillance time series object
+campy_sts <- sts(observed = campy_week$count,
+                 start = c(2007, 1), 
+                 freq = 52)
+```
+
+## EARS C1 algorithm 
+
+This method is suitable when few historical data are available, but does not adjust for trend, seasonality, nor does it take into account past outbreaks. The baseline is the 7 time points before the assessed time point $t_0$. The expected value is the mean of the baseline. The method is based on a statistic called $C_{t0}$ defined as: 
+
+$$ C_{t0} = \frac{(y_{t0} - \bar{y}_{t0}) } {s_{t0}} $$
+
+where: 
+
+
+$$ \bar{y}_{t0} = \frac {1}{7} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} y_i$$
+
+$$ s_{t0}^2 = \frac {1}{7-1} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} (y_i - \bar{y}_{t0}) ^2 $$
+
+Under the null hypothesis of no outbreak, we assume that $C_{t0}$ is normally distributed with a mean of 0 and standard deviation of 1. The upper bound $U_{t0}$ is defined by a confidence interval of $(1 \times \alpha) \times 100$  for the mean: 
+
+$$ U_{t0} = \bar{y}_{t0} + z_{1-\alpha} \cdot s_{t0} $$
+
+An alarm is raised if $y_{t0} > U_{t0}$. To apply the detection algorithm in R, you first need to construct a control slot that defines some of the parameters (range, method, the alpha error, etc…) of the algorithm. 
+
+```{r}
+# define control
+ctrl <- list(range = 8:209, 
+             method = "C1",
+             alpha = 0.05) 
+```
+
+We can then use the *earsC* function from the surveillance package. 
+
+```{r}
+# apply EARS C1 algorithm 
+earmethod <- earsC(campy_sts, control = ctrl)
+```
+
+You can also plot the outcome of this algorithm. 
+
+```{r}
+# plot your counts with algorithm applied 
+plot(earmethod, 
+     main = "EARS method, 7 weeks, alpha 0.05",
+     legend.opts = list("top", horiz = TRUE))
+```
+
+
+# CDC algorithm - Historical Mean Method (Stroup et al, 1989) 
+
+This signal detection method is used on a weekly basis by CDC (see example of output below). It is based on the totals from previous, comparable, and subsequent 4-week periods for the past 5 years. In our case, we cannot go as far as 5 years in the past; we will build our baseline using the past 2 years. This method does not adjust for trend and does not adjust for past outbreaks. 
+
+When alpha is set to 0.05, the historical limit is computed as:
+
+$$ x + 1.96 \cdot std(x)$$
+
+Selected notifiable disease reports, US, comparison of provisional 4-week totals, March 6 2010 with historical data
+
+![](CDCdiseases.png) 
+
+* Ratio of current 4-week total to mean of 15 4-week totals (from previous, comparable, and subsequent 4-week periods for the past 5 years). The point where the hatched area begins is based on the mean and two standard deviations of these 4-week totals. 
+
+
+To apply the CDC detection algorithm we need to create *disProg* object from our *sts* object. 
+
+```{r}
+# create a disprog object 
+campy_stsd <- sts2disProg(campy_sts)
+```
+
+
+
+```{r}
+cdcmethod <- algo.cdc(campy_stsd, 
+                      control = list(range = 130:209, b = 2, m = 4, alpha = 0.025))
+
+```
+
+
+THIS IS ALL WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+https://sci-hub.tw/https://link.springer.com/article/10.1007%2Fs00180-007-0074-8 
+
+https://surveillancer.github.io/tutorials/articles/EARSC_Belgium.html 
+
+https://dirk.shinyapps.io/surveillance/ 
+
+
+# Farringont algorithm - used by PHE 
+
+This method fits an over-dispersed Poisson generalized linear model with log link to the reference data. It takes seasonality into account by using a subset of the available data as reference data for fitting the model: w time points centered around the time point located 1, 2,… b years before t0, amounting to a total b*(2w+1) reference values. It is better to exclude the most recent weeks before t0 from the baseline in order to avoid reducing sensitivity when an outbreak has started recently before t0 (pastWeeksNotIncluded). The time trend is included only when significant at a chose level pThresholdTrend, when there are more than three years reference data and if not overextrapolation occurs because of the time trend. Past outbreaks are reweighted based on their Anscombe residuals. If the Anscombe residuals of a count is higher than weightsThreshold it is reweighted accordingly in a second fitting of the linear model.
+
+```{r}
+
+# define control
+ctrl <- list(range = 108:209,
+              b = 2, w = 4, 
+             pastWeeksNotIncluded = 3)
+
+# apply farrington flexible method 
+farringtonmethod <- farringtonFlexible(campy_sts, ctrl)
+
+# plot your counts with algorithm applied 
+plot(farringtonmethod, 
+     main = "Farrington method, 2 years, 4 weeks, alpha 0.01",
+     legend.opts = list("top", horiz = TRUE))
+```
+
+
+# CUSUM  – used to detect sustained shift in the underlying process
+
+
+```{r}
+cusummethod <- algo.cusum(campy_stsd, control = list(range = 140:209))
+
+plot(cusummethod)
+```
+
+
+THIS IS DEFINITELY WRONG TOO!!!!!
+
+
+
+
+# GLRNB method 
+
+```{r}
+ctrl <- list(range = 105:209, c.ARL = 4, theta = log(2), ret = "cases",
+               mu0 = list(S = 1, trend = TRUE, refit = FALSE))
+
+
+glrnbmethod <- glrnb(campy_sts, control = ctrl)
+plot(glrnbmethod, main = "CUSUM method")
+```
 
 
 
