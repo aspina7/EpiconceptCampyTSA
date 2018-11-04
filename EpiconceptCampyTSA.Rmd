@@ -5,7 +5,9 @@ output:
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.width = 9,
+                      fig.height = 6)
 ```
 
 ```{r setlang, eval = TRUE, echo = FALSE, results = 'hide'}
