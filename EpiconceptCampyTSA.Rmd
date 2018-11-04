@@ -4,8 +4,12 @@ output:
   worded::rdocx_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setlang, eval = TRUE, echo = FALSE, results = 'hide'}
+Sys.setlocale("LC_ALL", "english_UK")
 ```
 
 
@@ -1344,22 +1348,22 @@ campy_sts <- sts(observed = campy_week$count,
 
 ## EARS C1 algorithm 
 
-This method is suitable when few historical data are available, but does not adjust for trend, seasonality, nor does it take into account past outbreaks. The baseline is the 7 time points before the assessed time point $t_0$. The expected value is the mean of the baseline. The method is based on a statistic called $C_{t0}$ defined as: 
+This method is suitable when few historical data are available, but does not adjust for trend, seasonality, nor does it take into account past outbreaks. The baseline is the 7 time points before the assessed time point $t_0$. The expected value is the mean of the baseline. The method is based on a statistic called $C_{t_0}$ defined as: 
 
-$$ C_{t0} = \frac{(y_{t0} - \bar{y}_{t0}) } {s_{t0}} $$
+$$ C_{t_0} = \frac{(y_{t_0} - \bar{y}_{t_0}) } {s_{t_0}} $$
 
 where: 
 
 
-$$ \bar{y}_{t0} = \frac {1}{7} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} y_i$$
+$$ \bar{y}_{t_0} = \frac {1}{7} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} y_i$$
 
-$$ s_{t0}^2 = \frac {1}{7-1} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} (y_i - \bar{y}_{t0}) ^2 $$
+$$ s_{t_0}^2 = \frac {1}{7-1} \cdot \sum_{i=t_0 - 7}^{t_0 - 1} (y_i - \bar{y}_{t_0}) ^2 $$
 
-Under the null hypothesis of no outbreak, we assume that $C_{t0}$ is normally distributed with a mean of 0 and standard deviation of 1. The upper bound $U_{t0}$ is defined by a confidence interval of $(1 \times \alpha) \times 100$  for the mean: 
+Under the null hypothesis of no outbreak, we assume that $C_{t_0}$ is normally distributed with a mean of 0 and standard deviation of 1. The upper bound $U_{t_0}$ is defined by a confidence interval of $(1 \times \alpha) \times 100$  for the mean: 
 
-$$ U_{t0} = \bar{y}_{t0} + z_{1-\alpha} \cdot s_{t0} $$
+$$ U_{t_0} = \bar{y}_{t_0} + z_{1-\alpha} \cdot s_{t_0} $$
 
-An alarm is raised if $y_{t0} > U_{t0}$. To apply the detection algorithm in R, you first need to construct a control slot that defines some of the parameters (range, method, the alpha error, etc…) of the algorithm. 
+An alarm is raised if $y_{t_0} > U_{t_0}$. To apply the detection algorithm in R, you first need to construct a control slot that defines some of the parameters (range, method, the alpha error, etc...) of the algorithm. 
 
 ```{r}
 # define control
@@ -1411,33 +1415,47 @@ campy_stsd <- sts2disProg(campy_sts)
 
 ```{r}
 cdcmethod <- algo.cdc(campy_stsd, 
-                      control = list(range = 130:209, b = 2, m = 4, alpha = 0.025))
+                      control = list(range = 130:209, b = 2, m = 4, alpha = 0.05))
 
 ```
 
+You can also plot the outcome of this algorithm. 
 
-THIS IS ALL WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!!
+```{r}
+# plot your counts with algorithm applied 
+syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
+sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
+
+plot(cdcmethod, startyear = syear, firstweek = sweek,
+     main = "CDC Historical Mean Method, b=2 years, m=4 weeks, alpha 0.05",
+     legend.opts = list(x = "top", horiz = TRUE))
+```
+
+<!-- THIS IS ALL WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
 
 
 
 
-https://sci-hub.tw/https://link.springer.com/article/10.1007%2Fs00180-007-0074-8 
+<!-- https://sci-hub.tw/https://link.springer.com/article/10.1007%2Fs00180-007-0074-8  -->
 
-https://surveillancer.github.io/tutorials/articles/EARSC_Belgium.html 
+<!-- https://surveillancer.github.io/tutorials/articles/EARSC_Belgium.html  -->
 
-https://dirk.shinyapps.io/surveillance/ 
+<!-- https://dirk.shinyapps.io/surveillance/  -->
 
 
 # Farringont algorithm - used by PHE 
 
-This method fits an over-dispersed Poisson generalized linear model with log link to the reference data. It takes seasonality into account by using a subset of the available data as reference data for fitting the model: w time points centered around the time point located 1, 2,… b years before t0, amounting to a total b*(2w+1) reference values. It is better to exclude the most recent weeks before t0 from the baseline in order to avoid reducing sensitivity when an outbreak has started recently before t0 (pastWeeksNotIncluded). The time trend is included only when significant at a chose level pThresholdTrend, when there are more than three years reference data and if not overextrapolation occurs because of the time trend. Past outbreaks are reweighted based on their Anscombe residuals. If the Anscombe residuals of a count is higher than weightsThreshold it is reweighted accordingly in a second fitting of the linear model.
+This method fits an over-dispersed Poisson generalized linear model with log link to the reference data. It takes seasonality into account by using a subset of the available data as reference data for fitting the model: $w$ time points centered around the time point located $1, 2, \dots, b$ years before $t_0$, amounting to a total $b*(2w+1)$ reference values. It is better to exclude the most recent weeks before $t_0$ from the baseline in order to avoid reducing sensitivity when an outbreak has started recently before $t_0$ (`pastWeeksNotIncluded`). The time trend is included only when significant at a chosen level `pThresholdTrend`, when there are more than three years reference data and if not overextrapolation occurs because of the time trend. Past outbreaks are reweighted based on their Anscombe residuals. If the Anscombe residuals of a count is higher than `weightsThreshold` it is reweighted accordingly in a second fitting of the linear model.
 
 ```{r}
 
 # define control
-ctrl <- list(range = 108:209,
-              b = 2, w = 4, 
-             pastWeeksNotIncluded = 3)
+ctrl <- list(range = 130:209,
+             b = 2, w = 4, 
+             weightsThreshold = 2.56,
+             pastWeeksNotIncluded = 3,
+             pThresholdTrend = 0.05,
+             thresholdMethod = "delta")
 
 # apply farrington flexible method 
 farringtonmethod <- farringtonFlexible(campy_sts, ctrl)
@@ -1451,28 +1469,42 @@ plot(farringtonmethod,
 
 # CUSUM  – used to detect sustained shift in the underlying process
 
+The CUSUM algorithm is a technique of statistical process control (SPC). It assumes a two-state situation, so-called in-control and out-of-control (i.e. an outbreak) and we assume different distribution of case counts in both states. The aim of the CUSUM is to find the point where the distribution changes. As we are dealing with a time series with underlying seasonality we need to define `m` as `glm` to control for it.
 
 ```{r}
-cusummethod <- algo.cusum(campy_stsd, control = list(range = 140:209))
+ctrl <- list(range = 130:209,
+             m = "glm")
 
-plot(cusummethod)
+cusummethod <- algo.cusum(campy_stsd, control = ctrl)
 ```
 
+```{r}
+syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
+sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
 
-THIS IS DEFINITELY WRONG TOO!!!!!
-
+plot(cusummethod, startyear = syear, firstweek = sweek,
+     main = "CUSUM method",
+     legend.opts = list(x = "top", horiz = TRUE))
+```
 
 
 
 # GLRNB method 
 
-```{r}
-ctrl <- list(range = 105:209, c.ARL = 4, theta = log(2), ret = "cases",
+This method is a synthesis of traditional methods like the Farrington algorithm and statistical process control algorithms like CUSUM. The idea is to combine the possibility to detect sustained shifts with the ability of taking overdispersion or seasonality into account. You need to split your data into two phases, where phase one is  used for some GLM model fit. Technically, in the `glrnb` functions, the time period defined in the `range` option will be phase 2 and everything before it will be considered as phase 1.
+
+```{r, results = 'hide'}
+phase2 <- 130:209# 100:170
+ctrl <- list(range = phase2, c.ARL = 4, theta = log(1.4), ret = "cases",
                mu0 = list(S = 1, trend = TRUE, refit = FALSE))
 
 
 glrnbmethod <- glrnb(campy_sts, control = ctrl)
-plot(glrnbmethod, main = "CUSUM method")
+```
+
+```{r}
+plot(glrnbmethod, main = "GLRNB method",
+     legend.opts = list("top", horiz = TRUE))
 ```
 
 
@@ -1487,7 +1519,7 @@ plot(glrnbmethod, main = "CUSUM method")
 The following code changes your R system locales to English. This is only done for the current session, so each time you open a new R session you would need to set it to English. 
 For a list of language options and the strings to enter see the [windows website](https://docs.microsoft.com/en-us/cpp/c-runtime-library/language-strings?view=vs-2017).
 
-```{r, eval = F}
+```{r, eval = FALSE}
 Sys.setlocale("LC_ALL", "english_UK")
 ```
 
