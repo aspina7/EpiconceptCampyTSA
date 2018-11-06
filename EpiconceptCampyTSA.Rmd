@@ -62,7 +62,6 @@ This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and 
   - Rights other persons may have either in the work itself or in how the work is used, such as publicity or privacy rights. 
 - **Notice** — 	For any reuse or distribution, you must make clear to others the license terms of this work by keeping together this work and the current license. 
 
-
 This licence is based on http://creativecommons.org/licenses/by-sa/3.0/
 
 <!---CHUNK_PAGEBREAK---> 
@@ -185,14 +184,15 @@ You will need to install these before starting. We will be using the following p
 
 - *ISOweek*: for adjusting dates and switching between units
 - *surveillance*: for fitting time series and detection algorithms
-- *zoo*: for producing rolling statistics
+- *zoo*: for producing rolling statistics 
+- *moments*: for looking at skewness and kurtosis of time series
 
 
 You can also install packages using the *install.packages* function, as below. Do not try to understand this code. 
 
 ```{r}
 #choose packages required 
-required_packages <- c("ISOweek", "surveillance", "zoo")
+required_packages <- c("ISOweek", "surveillance", "zoo", "psych")
 ```
 ```{r, eval = FALSE}
 # Installing required packages for this case study
@@ -540,7 +540,7 @@ sum(is.na(campy_ts))
 Plot your time series. 
 
 ```{r}
-#Plot time series by week 
+# Plot time series by week 
 plot(campy_ts, main = "Weekly cases, UK, 2007-2010", 
      ylab = "Number of cases", xlab = "Week of notification")
 ```
@@ -548,20 +548,26 @@ plot(campy_ts, main = "Weekly cases, UK, 2007-2010",
 Examine the distribution of counts per week. 
 
 ```{r}
-#plot histogram of counts occurences
+# plot histogram of counts occurences
 hist(campy_ts)
 ```
 
 
+Look at the summary statistics, as well as the skewness and kurtosis using the respective functions from the *moments* package. 
+
+```{r}
+# summary statistics
+summary(campy_ts)
+
+# look at the skewness
+skewness(campy_ts)
+
+# look at kurtosis
+kurtosis(campy_ts)
+```
 
 
-
-
-
-### NEED TO FIND A FUNCTION FOR SKEWNESS AND KURTOSIS (OTHERWISE JUST USE A PACKAGE!!) 
-####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
+The mean and median are not too different. There appears to be some skewness in the data. Kurtosis is around 3, which means there is a similar peak as in a normal distribution.
 
 
 
@@ -1152,8 +1158,17 @@ shapiro.test(linreg3$residuals)
 The histogram is skewed to the right and the Shapiro-Wilk test for normality is significant, which tells us the data are not compatible with the normal distribution. We can also look at summary statistics. 
 
 
-### NEED TO FIND A FUNCTION FOR SKEWNESS AND KURTOSIS (OTHERWISE JUST USE A PACKAGE!!) 
-####!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+```{r}
+# summary statistics
+summary(linreg3$residuals)
+
+# look at the skewness
+skewness(linreg3$residuals)
+
+# look at kurtosis
+kurtosis(linreg3$residuals)
+```
+
 
 We see that there is some skewness in the data (it is positive, so it is skewed to the right) and also a kurtosis that is higher than 3. The mean and the median are different. This could indicate a presence of outbreaks. It may be worth revising the seasonality – to see if we adequately described seasonality.
 
@@ -1416,6 +1431,7 @@ campy_stsd <- sts2disProg(campy_sts)
 
 
 ```{r}
+# apply the cdc algorithm 
 cdcmethod <- algo.cdc(campy_stsd, 
                       control = list(range = 130:209, b = 2, m = 4, alpha = 0.05))
 
@@ -1424,28 +1440,28 @@ cdcmethod <- algo.cdc(campy_stsd,
 You can also plot the outcome of this algorithm. 
 
 ```{r}
-# plot your counts with algorithm applied 
+plot(cdcmethod,
+     main = "CDC Historical Mean Method, b=2 years, m=4 weeks, alpha 0.05",
+     legend.opts = list(x = "top", horiz = TRUE))
+```
+
+
+It is clear from this plot that the x-axis labels of time are not correct. This appears to be an in-built error of the package and can be corrected as below. 
+
+```{r}
+# define the start week and year for your plot labels
+  # nb. %% is the modulus
 syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
 sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
 
+# plot your counts with algorithm applied 
 plot(cdcmethod, startyear = syear, firstweek = sweek,
      main = "CDC Historical Mean Method, b=2 years, m=4 weeks, alpha 0.05",
      legend.opts = list(x = "top", horiz = TRUE))
 ```
 
-<!-- THIS IS ALL WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
 
-
-
-
-<!-- https://sci-hub.tw/https://link.springer.com/article/10.1007%2Fs00180-007-0074-8  -->
-
-<!-- https://surveillancer.github.io/tutorials/articles/EARSC_Belgium.html  -->
-
-<!-- https://dirk.shinyapps.io/surveillance/  -->
-
-
-# Farringont algorithm - used by PHE 
+# Farrington algorithm - used by PHE 
 
 This method fits an over-dispersed Poisson generalized linear model with log link to the reference data. It takes seasonality into account by using a subset of the available data as reference data for fitting the model: $w$ time points centered around the time point located $1, 2, \dots, b$ years before $t_0$, amounting to a total $b*(2w+1)$ reference values. It is better to exclude the most recent weeks before $t_0$ from the baseline in order to avoid reducing sensitivity when an outbreak has started recently before $t_0$ (`pastWeeksNotIncluded`). The time trend is included only when significant at a chosen level `pThresholdTrend`, when there are more than three years reference data and if not overextrapolation occurs because of the time trend. Past outbreaks are reweighted based on their Anscombe residuals. If the Anscombe residuals of a count is higher than `weightsThreshold` it is reweighted accordingly in a second fitting of the linear model.
 
@@ -1474,16 +1490,22 @@ plot(farringtonmethod,
 The CUSUM algorithm is a technique of statistical process control (SPC). It assumes a two-state situation, so-called in-control and out-of-control (i.e. an outbreak) and we assume different distribution of case counts in both states. The aim of the CUSUM is to find the point where the distribution changes. As we are dealing with a time series with underlying seasonality we need to define `m` as `glm` to control for it.
 
 ```{r}
+# define control range and method
 ctrl <- list(range = 130:209,
              m = "glm")
 
+# apply cusum algorithm 
 cusummethod <- algo.cusum(campy_stsd, control = ctrl)
 ```
 
+Here too there is an error with axis labels and this can be corrected as below before plotting. 
+
 ```{r}
+# correct start week and year for axis labels
 syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
 sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
 
+# plot with algorithm applied
 plot(cusummethod, startyear = syear, firstweek = sweek,
      main = "CUSUM method",
      legend.opts = list(x = "top", horiz = TRUE))
@@ -1493,22 +1515,33 @@ plot(cusummethod, startyear = syear, firstweek = sweek,
 
 # GLRNB method 
 
-This method is a synthesis of traditional methods like the Farrington algorithm and statistical process control algorithms like CUSUM. The idea is to combine the possibility to detect sustained shifts with the ability of taking overdispersion or seasonality into account. You need to split your data into two phases, where phase one is  used for some GLM model fit. Technically, in the `glrnb` functions, the time period defined in the `range` option will be phase 2 and everything before it will be considered as phase 1.
+This method is a synthesis of traditional methods like the Farrington algorithm and statistical process control algorithms like CUSUM. The idea is to combine the possibility to detect sustained shifts with the ability of taking overdispersion or seasonality into account. You need to split your data into two phases, where phase one is  used for fitting a GLM model. Technically, in the `glrnb` functions, the time period defined in the `range` option will be phase 2 and everything before it will be considered phase 1.
 
 ```{r, results = 'hide'}
-phase2 <- 130:209# 100:170
+# define your period of interest
+phase2 <- 130:209
+
+# define control options
 ctrl <- list(range = phase2, c.ARL = 4, theta = log(1.4), ret = "cases",
                mu0 = list(S = 1, trend = TRUE, refit = FALSE))
 
-
+# apply the algorithm
 glrnbmethod <- glrnb(campy_sts, control = ctrl)
 ```
 
 ```{r}
+# plot with algorithm applied
 plot(glrnbmethod, main = "GLRNB method",
      legend.opts = list("top", horiz = TRUE))
 ```
 
+# Comparing algorithms 
+
+It is then possible to compare the various algorithms using the *algo.compare* function. 
+```{r}
+# compare algorithms
+comparsurv <- algo.compare(list(earmethod, farringtonmethod, cusummethod, glrnbmethod))
+```
 
 
 
