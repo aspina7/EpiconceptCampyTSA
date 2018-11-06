@@ -34,7 +34,6 @@ for (i in seq(along = required_packages)) {
 **Source:** 
 
 This case study was designed under a ECDC contract for “Expertise in biostatistics for analysis of surveillance data”.
-
 This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and was modified for R by Thomas Seyler, EpiConcept, July 2015. In 2018 the R version was re-worked by Alexander Spina (correction and updated); some parts of code were adapted from the EPIET time series analysis module case studies. 
 
 **Revisions:** 
@@ -63,7 +62,6 @@ This tutorial was first designed by Esther Kissling, EpiConcept, April 2012 and 
 - **Notice** — 	For any reuse or distribution, you must make clear to others the license terms of this work by keeping together this work and the current license. 
 
 This licence is based on http://creativecommons.org/licenses/by-sa/3.0/
-
 <!---CHUNK_PAGEBREAK---> 
 
 ## Objectives of tutorial 
@@ -177,6 +175,7 @@ To do this you can click on "Install" on the bottom right in the "Packages" wind
 
 ![](RstudioPackages.png) 
 
+<!---CHUNK_PAGEBREAK---> 
 
 We will mainly use packages which come ready installed with R (base code), but where it makes things easier we will use add-on packages. All the R packages you need for the exercises can be installed over the Internet.
 
@@ -192,7 +191,7 @@ You can also install packages using the *install.packages* function, as below. D
 
 ```{r}
 #choose packages required 
-required_packages <- c("ISOweek", "surveillance", "zoo", "psych")
+required_packages <- c("ISOweek", "surveillance", "zoo", "moments")
 ```
 ```{r, eval = FALSE}
 # Installing required packages for this case study
@@ -220,6 +219,7 @@ for (i in seq(along = required_packages)) {
 }
 ```
 
+<!---CHUNK_PAGEBREAK---> 
 
 ## Reading in data 
 
@@ -280,6 +280,7 @@ You could achieve the same thing by using the *View* function (note the capital 
 View(campy)
 ```
 
+<!---CHUNK_PAGEBREAK---> 
 
 **Examples of hypotheses to be tested could be:** 
 
@@ -537,6 +538,9 @@ summary(campy_ts)
 sum(is.na(campy_ts))
 ```
 
+<!---CHUNK_PAGEBREAK---> 
+
+
 Plot your time series. 
 
 ```{r}
@@ -581,7 +585,7 @@ The mean and median are not too different. There appears to be some skewness in 
 
 ### Linear regression 
 
-Simply speaking, a time series is stationary if its mean level and variance stay steady over time, or as explained by Hyndman and Athana¬sopou¬los (2013): “[a] stationary time series is one whose properties do not depend on the time at which the series is observed”. 
+Simply speaking, a time series is stationary if its mean level and variance stay steady over time, or as explained by Hyndman and Athanasopoulos (2013): “[a] stationary time series is one whose properties do not depend on the time at which the series is observed”. 
 
 We can use linear regression to check whether the mean is constant over time:
 We first define the time variable as "t", ranging from week 1 to week 209, covering the whole period: 
@@ -678,7 +682,7 @@ plot(pacplot, main = "Partial Autocorrelation", xlab = "Lag (week)")
 
 The partial autocorrelation graph shows autocorrelation at the first lag and further autocorrelation at around the 5th and 18/19th lag. The seasonal component of this time series needs to be examined. 
 
-
+<!---CHUNK_PAGEBREAK---> 
 
 ## Checks for normality 
 
@@ -715,6 +719,8 @@ This can also be show statistically using the shapiro-Wilk test for normality. T
 # run shapiro-wilk test on data
 shapiro.test(campy_ts)
 ```
+
+<!---CHUNK_PAGEBREAK---> 
 
 ## Check transformations
 
@@ -798,6 +804,9 @@ shapiro.test(sqcampy_ts)
 ```
 
 The transformation that renders the original time series most normal is the square root (W = 0.98762, p-value = 0.06633). However, does this transformation make sense? A log transformation and also no transformation should also be considered. 
+
+<!---CHUNK_PAGEBREAK---> 
+
 
 # Moving average 
 
@@ -952,20 +961,19 @@ Furthermore, it is important that we have no missing data. If this were the case
 # Seasonality 
 
 We will check for seasonality on the data after the trend is removed, however we get basically the same results if we check for seasonality on the original data.
-We can find the most important periods in the data by doing a spectral analysis. This can be done using the *spec.pgram* function.  
-
+We can find the most important periods in the data by doing a spectral analysis. This can be done using the *spec.pgram* function. By specifying *fast* as false, stops the function from "padding" the series with extra zeros to enable fast fourier transform. 
 
 
 ```{r}
 
 # get spectrograme with detrended 
-periodo <- spec.pgram(campy_ts, detrend = TRUE)
+periodo <- spec.pgram(campy_ts, fast = FALSE)
 
 ```
 
 To plot the periodogram appropriately we need to divide the frequencies by 52, as it is originally given in years. 
 
-From the periodogram we can see that there may be several important periods. The first period of importance is obviously 55 weeks, after that we see 1 or 2 further important peaks. 
+From the periodogram we can see that there may be several important periods. The first period of importance is obviously 52 weeks, after that we see 1 or 2 further important peaks. 
 
 ```{r}
 # plot spectogram as weeks (rather than years)
@@ -985,13 +993,13 @@ We can extract the frequencies with the highest peaks and extract the weeks  –
 
 ```
 
-We can see that after a period of 54, the period of 18 is most important. This is approximately a third of a year, so this may be a plausible further period to explore. The next most important period is 27, which is around half a year, again a possible plausible period to explore.
-Let’s just start with the most important period of 54 weeks. We can create a sine and cosine for this period and add it to our model with the linear trend. 
+We can see that after a period of 52.25, the period of 17.4 is most important. This is approximately a third of a year, so this may be a plausible further period to explore. The next most important period is 26.1, which is around half a year, again a possible plausible period to explore.
+Let’s just start with the most important period of 52.25 weeks. We can create a sine and cosine for this period and add it to our model with the linear trend. 
 
 ```{r}
 # defining sine and cosine terms
-sin52 <- sin(2 * pi * t / 52) 
-cos52 <- cos(2 * pi * t / 52) 
+sin52 <- sin(2 * pi * t / 52.25) 
+cos52 <- cos(2 * pi * t / 52.25) 
 ```
 
 
@@ -1027,8 +1035,8 @@ We can now see if a further period improves our model. We create further sine an
 
 ```{r}
 # defining sine and cosine terms
-sin17 <- sin(2 * pi * t / 17.3) 
-cos17 <- cos(2 * pi * t / 17.3) 
+sin17 <- sin(2 * pi * t / 17.4) 
+cos17 <- cos(2 * pi * t / 17.4) 
 
 # run linear regression for counts over time
 linreg3 <- lm(campy_ts ~ t + sin52 + cos52 + sin17 + cos17) 
@@ -1040,7 +1048,7 @@ summary(linreg3)
 confint(linreg3)
 ```
 
-We can see that all sine and cosine terms are significant. The adjusted R-squared is around 0.78. The adjusted R-squared for the previous model was around 0.71 – therefore the new model is quite a big improvement. 
+We can see that all sine and cosine terms are significant. The adjusted R-squared is around 0.81. The adjusted R-squared for the previous model was around 0.71 – therefore the new model is quite a big improvement. 
 
 
 We can also compare the AIC for these models
@@ -1051,7 +1059,10 @@ AIC(linreg2)
 AIC(linreg3)
 ```
 
-The AIC for the model with the extra seasonal term is 2771, which is substantially lower than the AIC with only one seasonal term. 
+The AIC for the model with the extra seasonal term is 2740.5, which is substantially lower than the AIC with only one seasonal term. 
+
+<!---CHUNK_PAGEBREAK---> 
+
 
 We can also plot the new model. 
 
@@ -1071,11 +1082,11 @@ From the periodogram, we also saw that a period of 26 may also be an important p
 
 ```{r}
 # defining sine and cosine terms
-sin26 <- sin(2 * pi * t / 26) 
-cos26 <- cos(2 * pi * t / 26) 
+sin26 <- sin(2 * pi * t / 26.1) 
+cos26 <- cos(2 * pi * t / 26.1) 
 
 # run linear regression for counts over time
-linreg4 <- lm(campy_ts ~ t + + sin52 + cos52 + sin17 + cos17 + sin26 + cos26) 
+linreg4 <- lm(campy_ts ~ t + sin52 + cos52 + sin17 + cos17 + sin26 + cos26) 
 
 # view output of regression
 summary(linreg4) 
@@ -1087,7 +1098,9 @@ confint(linreg4)
 AIC(linreg4)
 ```
 
-The model including 3 periods still shows that all sine and cosine parameters are significant. The adjusted R2 is now around 0.80. While this is higher than the last model, which had an adjusted R-squared of around 0.78, it is not substantially higher. The AIC is around 2748, which is lower than the previous one at 2771. 
+The model including 3 periods still shows that all sine and cosine parameters are significant. The adjusted R2 is now around 0.84. While this is higher than the last model, which had an adjusted R-squared of around 0.81, it is not substantially higher. The AIC is around 2704, which is lower than the previous one at 2740 
+
+<!---CHUNK_PAGEBREAK---> 
 
 If we graph the model, we can see that the model fits the data well, but it is difficult to visually see the difference between the previous and current model. 
 
@@ -1105,7 +1118,7 @@ Before choosing a final model, we also need to analyse the residuals.
 
 # Question 5 
 
-Analyse the residuals of the model containing a linear trend and seasonality with two periods: 52 and 17.33 weeks.  
+Analyse the residuals of the model containing a linear trend and seasonality with two periods: 52.25 and 17.4 weeks.  
 You can check for normality, check stationarity and for autocorrelation. 
 What do you conclude? What would be your next steps? 
 
@@ -1228,10 +1241,11 @@ abline(residreg_mean)
 
 ```
 
-While there are some outliers, there are very few. This plot shows that we can be happy that the residuals are stationary.
+While there are some outliers, there are very few. Although signficant, the minimal slope of this regression shows that we can be happy that the residuals are stationary.
+
+<!---CHUNK_PAGEBREAK--->
 
 ## Autocorrelation 
-
 
 
 We can check for autocorrelation using the *acf* function. This function also creates a plot.
@@ -1382,6 +1396,8 @@ $$ U_{t_0} = \bar{y}_{t_0} + z_{1-\alpha} \cdot s_{t_0} $$
 
 An alarm is raised if $y_{t_0} > U_{t_0}$. To apply the detection algorithm in R, you first need to construct a control slot that defines some of the parameters (range, method, the alpha error, etc...) of the algorithm. 
 
+<!---CHUNK_PAGEBREAK---> 
+
 ```{r}
 # define control
 ctrl <- list(range = 8:209, 
@@ -1405,6 +1421,7 @@ plot(earmethod,
      legend.opts = list("top", horiz = TRUE))
 ```
 
+<!---CHUNK_PAGEBREAK---> 
 
 # CDC algorithm - Historical Mean Method (Stroup et al, 1989) 
 
@@ -1460,6 +1477,7 @@ plot(cdcmethod, startyear = syear, firstweek = sweek,
      legend.opts = list(x = "top", horiz = TRUE))
 ```
 
+<!---CHUNK_PAGEBREAK---> 
 
 # Farrington algorithm - used by PHE 
 
@@ -1484,6 +1502,7 @@ plot(farringtonmethod,
      legend.opts = list("top", horiz = TRUE))
 ```
 
+<!---CHUNK_PAGEBREAK---> 
 
 # CUSUM  – used to detect sustained shift in the underlying process
 
@@ -1511,7 +1530,7 @@ plot(cusummethod, startyear = syear, firstweek = sweek,
      legend.opts = list(x = "top", horiz = TRUE))
 ```
 
-
+<!---CHUNK_PAGEBREAK---> 
 
 # GLRNB method 
 
@@ -1535,13 +1554,20 @@ plot(glrnbmethod, main = "GLRNB method",
      legend.opts = list("top", horiz = TRUE))
 ```
 
+<!---CHUNK_PAGEBREAK---> 
+
 # Comparing algorithms 
+
 
 It is then possible to compare the various algorithms using the *algo.compare* function. 
 ```{r}
+# list algorithms used 
+campy_algos <- list(earmethod, cdcmethod, cusummethod, farringtonmethod, glrnbmethod)
+
 # compare algorithms
-comparsurv <- algo.compare(list(earmethod, farringtonmethod, cusummethod, glrnbmethod))
+algo.compare(campy_algos)
 ```
+
 
 
 
