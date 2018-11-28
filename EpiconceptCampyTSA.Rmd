@@ -170,16 +170,16 @@ setwd("C:/data/crypto")
 
 ## Packages 
 
-R comes with a set of default functions. However one of the strengths of R is that many user-written functions exist to help you do your work. To use them, you first need to install the package they belong to. 
+R comes with a set of default functions. However, one of the strengths of R is that many user-written functions exist to help you do your work. To use them, you first need to install the package they belong to. 
 To do this you can click on "Install" on the bottom right in the "Packages" window. 
 
 ![](RstudioPackages.png) 
 
 <!---CHUNK_PAGEBREAK---> 
 
-We will mainly use packages which come ready installed with R (base code), but where it makes things easier we will use add-on packages. All the R packages you need for the exercises can be installed over the Internet.
+We will mainly use packages which come with R (base code), but where it makes things easier we will use add-on packages. All the R packages you need for the exercises can be installed over the Internet.
 
-You will need to install these before starting. We will be using the following packages. 
+Throughout the case study, we will be using the following packages:
 
 - *ISOweek*: for adjusting dates and switching between units
 - *surveillance*: for fitting time series and detection algorithms
@@ -187,34 +187,30 @@ You will need to install these before starting. We will be using the following p
 - *moments*: for looking at skewness and kurtosis of time series
 
 
-You can also install packages using the *install.packages* function, as below. Do not try to understand this code. 
+Please install them before starting. You can also install packages using the *install.packages* function, as below.  
 
 ```{r}
-#choose packages required 
+# Choose packages required 
 required_packages <- c("ISOweek", "surveillance", "zoo", "moments")
 ```
 ```{r, eval = FALSE}
 # Installing required packages for this case study
-for (pkg in required_packages) {
-  if (!pkg %in% rownames(installed.packages())) {
-    install.packages(pkg, dependencies = TRUE)
-  }
-}
+install.packages(required_packages)
 ```
 
 
-You only need to install packages once. However you will need to load them each time you start a new session using the *library* function. 
+You only need to install packages once. However, you will need to load them each time you start a new session using the *library* function. 
 
 ```{r, eval = FALSE}
 library(ISOweek)
 ```
 
-Here too, you can load multiple packages at the same time within a loop; again do not try to understand this just yet, just appreciate it is possible. 
+Here too, you can load multiple packages at the same time within a loop. 
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE}
 
 # Loading required packages for this case study
-for (i in seq(along = required_packages)) {
+for (i in 1:length(required_packages)) {
   library(required_packages[i], character.only = TRUE)
 }
 ```
@@ -232,23 +228,24 @@ campy <- read.csv("campy.csv", stringsAsFactors = FALSE)
 
 
 ## Variable types
-Campy is now a *R* object, of the data frame type. A data frame is simply the how datasets are classified in *R*, thus given class "data.frame". You can check the type of object by typing: class(campy)
+Campy is now a *R* object, of the data frame type. A data frame is simply how datasets are classified in *R*, thus given class "data.frame". You can check the type of object by typing: class(campy)
 
 Individual variables from the data frame are called using the name of the data frame followed by the **$** sign and the name of the variable. For instance, if you wish to enquire about the type of variables:  
 
 
 ```{r, eval = FALSE}
-#check class of variable time
+# Check class of variable time
 class(campy$time);
 
-#check class of variable count
+# Check class of variable count
 class(campy$count) 
 ```
 
-You will notice that the time variable is of class "character". However we want this as a date. You can change this by overwriting the variable using the *as.Date* function. 
+You will notice that the time variable is of class "character". However, we want this as a date. You can change this by overwriting the variable using the *as.Date* function. 
 
 ```{r}
-#overwrite time variable as a date 
+# Overwrite time variable as a date 
+# (relying on default format YYYY-MM-DD defined as “%Y-%m-%d” )   
 campy$time <- as.Date(campy$time)
 ```
 
@@ -258,25 +255,28 @@ campy$time <- as.Date(campy$time)
 To browse the first six records you can use the *head* function. 
 
 ```{r, eval = FALSE}
-#see first six rows of data 
+# See first six rows of data 
 head(campy)
 ```
 
 To get summary statistics of all variables included in the data frame use the *summary* function.
 
 ```{r, eval = FALSE}
-#see summary statistics of variables
+# See summary statistics of variables
 summary(campy)
 ```
 
 Alternatively you can view the data by clicking on the data by clicking on the data icon to the right of the view. 
 
-![](RstudioView.png) 
+![](RstudioView1.png)
+
+
+![](RstudioView2.png)
 
 You could achieve the same thing by using the *View* function (note the capital V). 
 
 ```{r, eval = FALSE}
-#view your dataset 
+# View your dataset 
 View(campy)
 ```
 
@@ -360,7 +360,7 @@ In the current form, the data frame is daily counts (aggregate counts by date of
 You could double check this using the *duplicated* function. 
 
 ```{r, eval = FALSE}
-#plot counts by day
+# Plot counts by day
 plot(campy$time, campy$count, 
      main = "Daily Campylobacter notifications, Europe, 2007-2010", 
      xlab = "days", ylab = "number of cases")
@@ -385,14 +385,14 @@ This plot shows the original data. There do appear to be some outliers (e.g. inc
 Now check if there are missing values in the dataset. You could either do this with the *summary* function, as in question 1, or you could do the following to get counts of missings for the dataset. 
 
 ```{r}
-# get counts of missing values in the dataset 
+# Get counts of missing values in the dataset 
 sum(is.na(campy))
 ```
 
 To check for notification bias, let us plot the number of cases notified by day of the week. The first step is to extract the date of the week from the date (‘date’ variable) by creating a new variable "dayweek". If the language on your computer is not set to English, see the appendix for how to change this and get English days of the week. 
 
 ```{r}
-#extract the weekdays from date
+# Extract the weekdays from date
 campy$dayweek <- weekdays(campy$time)
 ```
 
@@ -400,27 +400,27 @@ campy$dayweek <- weekdays(campy$time)
 Make sure the days of the week are in the correct order by making it a factor variable with appropriate levels. 
 
 ```{r}
-#change to factor with levels 
+# Change to factor with levels 
 campy$dayweek <- factor(campy$dayweek, 
                         levels = c("Monday", "Tuesday", "Wednesday", 
                                    "Thursday", "Friday", "Saturday", "Sunday"))
 ```
 
 
-You then need to use the *aggregate* function to collapse your dataset and get counts add the counts for each day together. 
-In the below step, you could also not use the *with* function and instead specify the dataset within *aggregate*. However this produces less useful column names. 
+You then need to use the *aggregate* function to collapse your dataset and get counts of Campylobacter cases by day of the week. 
+
 
 ```{r}
-# using campy dataframe 
+# Using campy dataframe 
   # sum counts by day of the week 
-campy_dayweek <- with(campy, aggregate(count ~ dayweek, FUN = sum))
+campy_dayweek <- aggregate(count ~ dayweek, campy, FUN = sum)
 ```
 
 Next make a bar chart of the number of cases per day of the week over the whole period. 
 You can use the aggregated *campy_dayweek* data in the *barplot* function. You may not see all of the x-labels in the plot window, however if you click the "zoom" button these should appear. 
 
 ```{r}
-# plot counts by day 
+# Plot counts by day 
   # names.arg is required to label the x axis appropriately
 barplot(campy_dayweek$count, names.arg = campy_dayweek$dayweek, 
         main = "Number of notified cases by day of the week", 
@@ -429,35 +429,39 @@ barplot(campy_dayweek$count, names.arg = campy_dayweek$dayweek,
 ```
 
 
-Let us check for numeric attraction by day of the month (think of potential higher notification on the 1^st^ of the month for administrative purposes). As we have seen that there is much fewer notifications during weekends, let us exclude Saturday and Sunday from this analysis. We create a new object that is the copy of ‘campy’ but without all weekend records. 
+Let us check for numeric attraction by day of the month (think of potential higher notification on the 1^st^ of the month for administrative purposes). 
+As we have seen that there are much fewer notifications during weekends, let us exclude Saturday and Sunday from this analysis. We create a new object that is the copy of ‘campy’ but without all weekend records. 
 
 
 ```{r}
-# keep rows from campy that are not saturday or sunday
-campyw <- subset(campy, 
-                 campy$dayweek != "Saturday" & campy$dayweek != "Sunday")
+# Keep rows from campy that are not saturday or sunday
+campy_noweekend <- subset(campy, 
+                          campy$dayweek != "Saturday" & campy$dayweek != "Sunday")
 ```
 
-Create a new variable "daynum"", extracting the day of the month from the "time" variable. To do this use the *format* function and specify day using "%d".
+Create a new variable "daynum", extracting the day of the month from the "time" variable. To do this use the *format* function and specify day using "%d".
 
 We also need to change this to a numeric variable using the *as.numeric* function. 
 
 ```{r}
-# create variable with day of month
+# Create variable with day of month
   # "%d" specifies that day of month is what you want
-campyw$daynum <- format(campyw$time, "%d")
+campy_noweekend$daynum <- format(campy_noweekend$time, "%d")
 
-# change to numeric 
-campyw$daynum <- as.numeric(campyw$daynum)
+# Check the class of the new variable
+class(campy_noweekend$daynum)
+
+# Change to numeric 
+campy_noweekend$daynum <- as.numeric(campy_noweekend$daynum)
 ```
 
 
-We then need to aggregate the number of cases by day of the month, by creating a new data frame "campyw_daynum",
+We then need to aggregate the number of cases by day of the month, by creating a new data frame "campy_noweekend_daynum",
 
 ```{r}
-# using campyw dataframe
+# Using campy_noweekend dataframe
   # sum counts by day
-campy_daynum <- with(campyw, aggregate(count ~ daynum, FUN = sum))
+campy_daynum <- aggregate(count ~ daynum, campy_noweekend, FUN = sum)
 ```
 
 Plot another bar chart. 
@@ -491,50 +495,52 @@ Describe the time series:
 The first thing to do is to create a data frame where the counts are aggregated by week. Be careful, there are different methods to build the week of the year. Here we will use the *ISOweek* function (part of *ISOweek* package). 
 
 ```{r}
-# create a variable with week 
+# Create a variable with week 
 campy$week <- ISOweek(campy$time)
 ```
 
 Have a look at the new variable
 
 ```{r, eval = FALSE}
-# look at first few rows
-head(campy$date) 
+# Look at first few rows
+head(campy$week) 
 
-# look at your dataset 
-View(campy$date)
+# Look at your dataset 
+View(campy$week)
 ```
 
 As before, use the aggregate function to sum the cases by ISO-week. 
 
 ```{r}
-# using campy dataframe
+# Using campy dataframe
   # sum counts by week
-campy_week <- with(campy, aggregate(count ~ week, FUN = sum))
+campy_weeknum <- aggregate(count ~ week, campy, FUN = sum)
 ```
 
-We will then create a Time-Series object. These are vector or matrices with class of "ts" (and additional attributes) which represent data that have been sampled at equispaced points in time. In the matrix case, each column of the matrix data is assumed to contain a single (univariate) time series. Working with a Time-Series object will make it easier to analyse the time series. We only keep the counts variable and then define the time unit of the new object by specifying the starting point (beginning of first week of 2007) and the frequency (52 weeks). 
+We will then create a Time-Series object. These are vector or matrices with class of "ts" (and additional attributes) which represent data that have been sampled at equispaced points in time. 
+Working with a Time-Series object will make it easier to analyse the time series. 
+We only keep the counts variable and then define the time unit of the new object by specifying the starting point (beginning of first week of 2007) and the frequency (52 weeks). 
 
 ```{r} 
-# Create time series only using campy$week
-campy_ts <- ts(campy_week$count, start = c(2007, 0), end = c(2010, 52), frequency = 52)
+# Create time series only using campy_weeknum
+campy_ts <- ts(campy_weeknum$count, start = c(2007, 1), frequency = 52)
 ```
 
 ```{r, eval = FALSE}
-# check the class of camp_ts
+# Check the class of camp_ts
 class(campy_ts)
 ```
 
 You can visualise the data from the time series object, look at basic descriptive statistics and check for missing values. 
 
 ```{r, eval = FALSE}
-# view your timeseries object 
+# View your timeseries object 
 campy_ts
 
-# get descriptive statistics 
+# Get descriptive statistics 
 summary(campy_ts)
 
-# check missings 
+# Check missings 
 sum(is.na(campy_ts))
 ```
 
@@ -552,7 +558,7 @@ plot(campy_ts, main = "Weekly cases, UK, 2007-2010",
 Examine the distribution of counts per week. 
 
 ```{r}
-# plot histogram of counts occurences
+# Plot histogram of counts occurences
 hist(campy_ts)
 ```
 
@@ -560,16 +566,18 @@ hist(campy_ts)
 Look at the summary statistics, as well as the skewness and kurtosis using the respective functions from the *moments* package. 
 
 ```{r}
-# summary statistics
+# Summary statistics
 summary(campy_ts)
 
-# look at the skewness
+# Look at the skewness
 skewness(campy_ts)
 
-# look at kurtosis
+# Look at kurtosis
 kurtosis(campy_ts)
 ```
 
+Skewness is a measure of symmetry. 
+Kurtosis is a measure of whether the data are heavy-tailed or light-tailed relative to a normal distribution. The kurtosis for a standard normal distribution is three. 
 
 The mean and median are not too different. There appears to be some skewness in the data. Kurtosis is around 3, which means there is a similar peak as in a normal distribution.
 
@@ -591,14 +599,14 @@ We can use linear regression to check whether the mean is constant over time:
 We first define the time variable as "t", ranging from week 1 to week 209, covering the whole period: 
 
 ```{r}
-# define number of timepoints
+# Define number of timepoints
 t <- 1:209
 ```
 
 We can then use our time-series data frame and the time variable in a linear regression using the *lm* function. 
 
 ```{r}
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg <- lm(campy_ts ~ t) 
 ```
 
@@ -606,7 +614,7 @@ linreg <- lm(campy_ts ~ t)
 It is possible to apply the *summary* function to this regression in order to get a nicely formatted output. 
 
 ```{r}
-# view output of regression
+# View output of regression
 summary(linreg) 
 ```
 
@@ -615,23 +623,25 @@ summary(linreg)
 There appears to be an upwards trend in the data. On average, there are 2.11 more cases notified every week. 
 We can also use linear regression to check whether the variance is constant over time.
 
-We first need to calculating a rolling standard deviation. In this case we choose a moving window of 10 weeks. This means that for each time point a standard deviation is calculated based on the five points before and after. 
+We first need to compute a rolling standard deviation deviation using the zoo package (Z’s Ordered Observations). In this case we choose a moving window of 10 weeks. This means that for each time point a standard deviation is calculated based on the five points before and after. 
 
 ```{r}
-# produce a centred rolling standard deviation with 10 week window
+# Produce a centred rolling standard deviation with 10 week window
 variance <- rollapply(data = campy_ts, width = 10, FUN = sd, fill = NA)
 ```
 
 ```{r}
 
-# run linear regression of standard deviation over time
+# Run linear regression of standard deviation over time
 variancereg <- lm(variance ~ t)
 
-# view output of linear regression 
+# View output of linear regression 
 summary(variancereg)
 ```
 
-There does not appear to be a significant difference in variance over time. 
+There appears to be a significant difference in variance over time. 
+
+According to our results, the time series is not stationary which is expected with surveillance data. Indeed, we do not expect our dataset to be stationary at this point.
 
 
 <!---CHUNK_PAGEBREAK---> 
@@ -643,25 +653,26 @@ Does the series correlate with itself, and for what lags?
 In order to do estimate autocorrelation we will use the *acf* function. This function also creates a plot, however we will not use the plotting function immediately. 
 
 ```{r}
-# estimate autocorrelation without plotting
-acplot <-  acf(campy_ts, plot = FALSE)
+# Estimate autocorrelation without plotting
+acplot <-  acf(campy_ts, lag.max = 52, plot = FALSE)
 ```
 
 We then need to transform lags from years to weeks by multiplying the lag variable by 52 (number of weeks in a year). 
 
 ```{r}
-# change lag from years to weeks
+# Change lag from years to weeks
 acplot$lag <- acplot$lag * 52
 ```
 
 Then you can use the regular plot function to visualise these estimates. 
 ```{r}
-# plot your autocorrelation graph
-plot(acplot, main = "Autocorrelation", xlab = "Lag (week)")
+# Plot your autocorrelation graph
+plot(acplot, ci.type = "ma", main = "Autocorrelation", xlab = "Lag (week)")
 ```
 
-The first line on this autocorrelation graph shows the correlation between each obsersation and itself (at lag zero, therefore always 1), the second shows correlation between each observation and the preceding one (lag one), and so on. 
-Blue lines show the 95% confidence intervals. Where lines go above or below this there is significant autocorrelation (in order to produce a similar confidence intervals to Stata, add *ci.type = "ma"* to the *acf* function). 
+The first line on this autocorrelation graph shows the correlation between each observation and itself (at lag zero, therefore always 1), the second shows correlation between each observation and the preceding one (lag one), and so on. 
+Blue lines show the 95% confidence intervals. 
+Where lines go above or below this there is significant autocorrelation (in order to produce a similar confidence intervals to Stata, add *ci.type = "ma"* for *"moving average process"* to the acf function – where confidence limits assume for lag k an MA(k-1) input instead of white noise). 
 This graph therefore shows substantial autocorrelation in the data. 
 
 We now need to investigate possible seasonality (or periodicity). 
@@ -669,13 +680,13 @@ To do this we use the *pacf* function for partial autocorrelation. Essentially w
 
 
 ```{r}
-# estimate partial autocorrelation without plotting
+# Estimate partial autocorrelation without plotting
 pacplot <- pacf(campy_ts, plot = FALSE) 
 
-# change lag from years to weeks
+# Change lag from years to weeks
 pacplot$lag <- pacplot$lag * 52
 
-# plot your partial autocorrelation graph
+# Plot your partial autocorrelation graph
 plot(pacplot, main = "Partial Autocorrelation", xlab = "Lag (week)")
 
 ```
@@ -691,14 +702,14 @@ We can plot a histogram of the data using *hist* and add a normal curve by combi
 
 
 ```{r}
-#plot your histogram defining labels and breaks
+# Plot your histogram defining labels and breaks
 hist(campy_ts, probability = TRUE, 
      main = "Distribution with normal curve", 
      xlab = "counts", 
      breaks = 15
      )
 
-#plot your normal curve on top
+# Plot your normal curve on top
 curve(dnorm(x, mean = mean(campy_ts), sd = sd(campy_ts)), 
             add = TRUE, col = "red", lwd = 2)
 ```
@@ -706,7 +717,7 @@ curve(dnorm(x, mean = mean(campy_ts), sd = sd(campy_ts)),
 You can also inspect this using a normal quantile plot (or QQ-plot). To do this combine the *qqnorm* and *qqline* functions. If the dots do not follow the straight line then it is indicative of a non-normal distribution.
 
 ```{r}
-# quantile plot for the data
+# Quantile plot for the data
 qqnorm(campy_ts)
 qqline(campy_ts)
 ```
@@ -716,7 +727,7 @@ Both of these plots show that the data is skewed and not normally distributed.
 This can also be show statistically using the shapiro-Wilk test for normality. This shows significant deviation from normal, so we may need to consider transforming the data.  
 
 ```{r}
-# run shapiro-wilk test on data
+# Run shapiro-wilk test on data
 shapiro.test(campy_ts)
 ```
 
@@ -728,25 +739,25 @@ We will check transforming using square-root, log and square.
 
 First try the square-root using the *sqrt* function. 
 ```{r}
-# check transformation by square-root 
+# Check transformation by square-root 
 
-# apply square-root to your dataset
+# Apply square-root to your dataset
 sqrtcampy_ts <- sqrt(campy_ts)
 
-# plot your histogram defining labels and breaks
+# Plot your histogram defining labels and breaks
 hist(sqrtcampy_ts, probability = TRUE, 
      main = "square-root", 
      xlab = "counts", 
      breaks = 15
      )
 
-# plot your normal curve on top
+# Plot your normal curve on top
 curve(dnorm(x, mean = mean(sqrtcampy_ts), sd = sd(sqrtcampy_ts)), 
             add = TRUE, col = "red", lwd = 2)
 
 
 
-# run shapiro-wilk test on data
+# Run shapiro-wilk test on data
 shapiro.test(sqrtcampy_ts)
 ```
 
@@ -754,24 +765,24 @@ Next try log transformation using the *log* function.
 
 ```{r}
 
-# check transformation by log 
+# Check transformation by log 
 
-# apply square-root to your dataset
+# Apply square-root to your dataset
 logcampy_ts <- log(campy_ts)
 
-# plot your histogram defining labels and breaks
+# Plot your histogram defining labels and breaks
 hist(logcampy_ts, probability = TRUE, 
      main = "Log", 
      xlab = "counts", 
      breaks = 15
      )
 
-# plot your normal curve on top
+# Plot your normal curve on top
 curve(dnorm(x, mean = mean(logcampy_ts), sd = sd(logcampy_ts)), 
             add = TRUE, col = "red", lwd = 2)
 
 
-# run shapiro-wilk test on data
+# Run shapiro-wilk test on data
 shapiro.test(logcampy_ts)
 
 ```
@@ -781,24 +792,24 @@ Finally, try transforming by the square by raising the data to the power of 2.
 ```{r}
 
 
-# check transformation by square 
+# Check transformation by square 
 
-# apply square-root to your dataset
+# Apply square-root to your dataset
 sqcampy_ts <- campy_ts^2
 
-# plot your histogram defining labels and breaks
+# Plot your histogram defining labels and breaks
 hist(sqcampy_ts, probability = TRUE, 
      main = "Square", 
      xlab = "counts", 
      breaks = 15
      )
 
-# plot your normal curve on top
+# Plot your normal curve on top
 curve(dnorm(x, mean = mean(sqcampy_ts), sd = sd(sqcampy_ts)), 
             add = TRUE, col = "red", lwd = 2)
 
 
-# run shapiro-wilk test on data
+# Run shapiro-wilk test on data
 shapiro.test(sqcampy_ts)
 
 ```
@@ -815,14 +826,14 @@ We can calculate these using the *rollapply* function. Similar to how we calcula
 We will calculate the centred moving average for several different time windows. Try for example to do one each for 52 weeks, 26 weeks and 13 weeks. 
 
 ```{r}
-# calculate annual moving average
+# Calculate annual moving average
 ma52 <- rollapply(campy_ts, width = 52, FUN = mean)
 ```
 
 We can then plot this using the *ts.plot* function. 
 
 ```{r}
-# plot your timeseries with annual moving average
+# Plot your time series with annual moving average
 ts.plot(campy_ts, ma52, 
         main = "Weekly cases and moving average of 52 weeks, Campylobacter cases, 2007-2010", 
         ylab = "number of cases", 
@@ -833,10 +844,10 @@ ts.plot(campy_ts, ma52,
 Now try the same for a 26 week window. 
 
 ```{r}
-# calculate 26 weekly moving average
+# Calculate 26 weekly moving average
 ma26 <- rollapply(campy_ts, width = 26, FUN = mean)
 
-# plot your timeseries with annual moving average
+# Plot your time series with annual moving average
 ts.plot(campy_ts, ma26, 
         main = "Weekly cases and moving average of 26 weeks, Campylobacter cases, 2007-2010", 
         ylab = "number of cases", 
@@ -848,10 +859,10 @@ ts.plot(campy_ts, ma26,
 And now do the same for a 13 week window. 
 
 ```{r}
-# calculate 13 weekly moving average
+# Calculate 13 weekly moving average
 ma13 <- rollapply(campy_ts, width = 13, FUN = mean)
 
-# plot your timeseries with annual moving average
+# Plot your time series with annual moving average
 ts.plot(campy_ts, ma13, 
         main = "Weekly cases and moving average of 13 weeks, Campylobacter cases, 2007-2010", 
         ylab = "number of cases", 
@@ -866,7 +877,7 @@ plot(decompose(campy_ts))
 ```
 
 In the UK, there appears to be an increasing annual trend in Campylobacter reports from 2007 to 2010 (this can be seen with the moving average of 51 weeks). There appears also to be an annual peak of reports in the summer (can be seen with the moving average of 25 weeks). The moving average window of 13 weeks, gives more information and shows that there appears to be a peak in early summer and a second smaller peak after the summer. 
-Without more background it is difficult to judge whether the trend is a real trend, the peaks are real peaks or they are perhaps due to batch reporting. However a literature search indicates that Great Britain has marked seasonal peaks in Campylobacter enteritis occurring in May and September (“Investigation of Faecal Specimens for Bacterial Pathogens”; National Standards Methods, 2010. http://www.hpa-standardmethods.org.uk/documents/bsop/pdf/bsop30.pdf [Accessed October 2011]). 
+Without more background it is difficult to judge whether the trend is a real trend, the peaks are real peaks or they are perhaps due to batch reporting. However, a literature search indicates that Great Britain has marked seasonal peaks in Campylobacter enteritis occurring in May and September (“Investigation of Faecal Specimens for Bacterial Pathogens”; National Standards Methods, 2010. http://hemltd.ru/publications/sections/Normativ/foreign/samples/medicine/NHS001/article.pdf [Accessed November 2018]). 
 
 
 <!---CHUNK_PAGEBREAK---> 
@@ -874,9 +885,10 @@ Without more background it is difficult to judge whether the trend is a real tre
 
 # Question 4 
 Decompose the time series: 
-- Decide on an appropriate trend to use 
-- With the trend removed, analyse seasonality 
-  - What seasonality will you include in a final model? Why?
+
+* Decide on an appropriate trend to use 
+* With the trend removed, analyse seasonality 
+* What seasonality will you include in a final model? Why?
 
 <!---CHUNK_PAGEBREAK---> 
 
@@ -884,23 +896,23 @@ Decompose the time series:
 
 ## Regression type
 
-We are using counts data, where sometimes Poisson regression or negative binomial regression (if overdispersion is present) may be indicated. However we have very high counts, with all counts per week exceeding 500. In addition, the histogram does not look particularly Poisson distributed. Therefore it may make sense to use linear regression in the first instance. At residual analysis stage we can then verify if this choice is appropriate. 
+We are using count data, where sometimes Poisson regression or negative binomial regression (if overdispersion is present) may be indicated. However, we have very high counts, with all counts per week exceeding 500. In addition, the histogram does not look particularly Poisson distributed. Therefore it may make sense to use linear regression in the first instance. At residual analysis stage we can then verify if this choice is appropriate. 
 A next step may be to decide if the data follow a linear or a quadratic trend. Look at the graphs and regression outputs for both trends. 
 
 First, define your time variable. The last time variable we defined by typing in the upper limit as a fixed value, however we can similarly make reference to the length of our time series object. 
 
 ```{r}
-# define time variable (number of weeks) 
+# Define time variable (number of weeks) 
 t <- 1:length(campy_ts)
 ```
 
 We now run a linear regression as previously, showing the summary as well as the confidence intervals. 
 
 ```{r}
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg <- lm(campy_ts ~ t) 
 
-# view output of regression
+# View output of regression
 summary(linreg) 
 
 # view confidence intervals 
@@ -919,29 +931,29 @@ ts.plot(campy_ts, linreg$fitted.values,
 For a quadratic model we need to first square our time variable and then run it together with the previous linear regression. 
 
 ```{r}
-# create a new squared timed variable
+# Create a new squared timed variable
 t2 <- t^2
 
-# run linear regression 
+# Run linear regression 
 quadreg <- lm(campy_ts ~ t + t2)
 
-# view output 
+# View output 
 summary(quadreg) 
 
-# plot with observed data 
+# Plot with observed data 
 ts.plot(campy_ts, quadreg$fitted.values, 
         col = c("black", "red"), 
         main = "linear quadratic trend")
 ```
 
 
-The adjusted  R^2^ of the model with a quadratic trend (R^2^=0.106) is slightly low than the R^2^ of the model with a linear trend (R^2^= 0.109). However the difference between these values is minimal. In addition, R^2^ values do not take the complexity of the model into account (a quadratic model is more complex than a linear model). We can examine the Akaike Information Criterion (AIC), which takes model complexity into account. 
+The adjusted  R^2^ of the model with a quadratic trend (R^2^=0.106) is slightly lower than the R^2^ of the model with a linear trend (R^2^= 0.109). However, the difference between these values is minimal. In addition, R^2^ values do not take the complexity of the model into account (a quadratic model is more complex than a linear model). We can examine the Akaike Information Criterion (AIC), which takes model complexity into account. 
 
 ```{r}
-# view linear regression AIC 
+# View linear regression AIC 
 AIC(linreg) 
 
-# view quadratic AIC
+# View quadratic AIC
 AIC(quadreg)
 ```
 
@@ -951,7 +963,7 @@ The AIC for the model with a linear trend is 3054.5 and the AIC for the model wi
 Conclusions: 
 In the overall dataset, we see an upwards trend over time, which we expected from the results of the moving average analysis. The regression output shows a coefficient of 2.11 which indicates an increase of 2.11 cases for each week in the dataset. The p-value is highly significant, which can also be a reflection of the high sample size. 
 It appears that the trend is increasing, but we cannot conclude that without more information on the surveillance system and reporting practices. 
-Please also note that for educational purposes we are using linear regression to model the trend here – linear regression may only be used if the data show no signs of overdispersion, which is rare in count data. However if counts are very high, then the distribution may approximate the normal distribution in which case it is OK to use linear regression. 
+Please also note that for educational purposes we are using linear regression to model the trend here – linear regression may only be used if the data show no signs of overdispersion, which is rare in count data. However, if counts are very high, then the distribution may approximate the normal distribution in which case it is OK to use linear regression. 
 Furthermore, it is important that we have no missing data. If this were the case, it would be important to set actions for NA values when running the *lm* function (see the help section for more). 
 
 
@@ -960,14 +972,15 @@ Furthermore, it is important that we have no missing data. If this were the case
 
 # Seasonality 
 
-We will check for seasonality on the data after the trend is removed, however we get basically the same results if we check for seasonality on the original data.
-We can find the most important periods in the data by doing a spectral analysis. This can be done using the *spec.pgram* function. By specifying *fast* as false, stops the function from "padding" the series with extra zeros to enable fast fourier transform. 
+We will check for seasonality on the data after the trend is removed.
+We can find the most important periods in the data by doing a spectral analysis. 
+This can be done using the *spec.pgram* function and the argument *detrend = TRUE* (default value). By specifying *fast* as false, it stops the function from "padding" the series with extra zeros to enable fast fourier transform. 
 
 
 ```{r}
 
-# get spectrograme with detrended 
-periodo <- spec.pgram(campy_ts, fast = FALSE)
+# Get spectrograme with detrended time series
+periodo <- spec.pgram(campy_ts, fast = FALSE, plot = FALSE)
 
 ```
 
@@ -976,7 +989,7 @@ To plot the periodogram appropriately we need to divide the frequencies by 52, a
 From the periodogram we can see that there may be several important periods. The first period of importance is obviously 52 weeks, after that we see 1 or 2 further important peaks. 
 
 ```{r}
-# plot spectogram as weeks (rather than years)
+# Plot spectogram as weeks (rather than years)
 plot(1/(periodo$freq/52), log(periodo$spec), 
       type = 'l',
       xlim = c(0, 209), 
@@ -987,9 +1000,9 @@ plot(1/(periodo$freq/52), log(periodo$spec),
 We can extract the frequencies with the highest peaks and extract the weeks  – note that you need to use the *order* function in combination with the negative sign to sort the output based on highest first. 
 
 ```{r}
-# extract important weeks 
+# Extract important weeks 
   # multiply by 52 because currently in years
-1 / periodo$freq[order(-periodo$spec)] * 52
+1 / periodo$freq[order(-log(periodo$spec))] * 52
 
 ```
 
@@ -997,7 +1010,7 @@ We can see that after a period of 52.25, the period of 17.4 is most important. T
 Let’s just start with the most important period of 52.25 weeks. We can create a sine and cosine for this period and add it to our model with the linear trend. 
 
 ```{r}
-# defining sine and cosine terms
+# Defining sine and cosine terms
 sin52 <- sin(2 * pi * t / 52.25) 
 cos52 <- cos(2 * pi * t / 52.25) 
 ```
@@ -1007,13 +1020,13 @@ Once you have defined your sine and cosine, you can add these to a linear regres
 
 
 ```{r}
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg2 <- lm(campy_ts ~ t + sin52 + cos52) 
 
-# view output of regression
+# View output of regression
 summary(linreg2) 
 
-# view confidence intervals 
+# View confidence intervals 
 confint(linreg2)
 ```
 
@@ -1034,17 +1047,17 @@ We can now see if a further period improves our model. We create further sine an
 
 
 ```{r}
-# defining sine and cosine terms
+# Defining sine and cosine terms
 sin17 <- sin(2 * pi * t / 17.4) 
 cos17 <- cos(2 * pi * t / 17.4) 
 
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg3 <- lm(campy_ts ~ t + sin52 + cos52 + sin17 + cos17) 
 
-# view output of regression
+# View output of regression
 summary(linreg3) 
 
-# view confidence intervals 
+# View confidence intervals 
 confint(linreg3)
 ```
 
@@ -1054,7 +1067,7 @@ We can see that all sine and cosine terms are significant. The adjusted R-square
 We can also compare the AIC for these models
 
 ```{r}
-# show AIC for both models
+# Show AIC for both models
 AIC(linreg2)
 AIC(linreg3)
 ```
@@ -1081,20 +1094,20 @@ From the periodogram, we also saw that a period of 26 may also be an important p
 
 
 ```{r}
-# defining sine and cosine terms
+# Defining sine and cosine terms
 sin26 <- sin(2 * pi * t / 26.1) 
 cos26 <- cos(2 * pi * t / 26.1) 
 
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg4 <- lm(campy_ts ~ t + sin52 + cos52 + sin17 + cos17 + sin26 + cos26) 
 
-# view output of regression
+# View output of regression
 summary(linreg4) 
 
-# view confidence intervals 
+# View confidence intervals 
 confint(linreg4)
 
-# view AIC for regression 
+# View AIC for regression 
 AIC(linreg4)
 ```
 
@@ -1131,10 +1144,10 @@ What do you conclude? What would be your next steps?
 ## Initial inspection 
 
 We can extract the residuals quite simply from a linear regression and plot them. 
-In this case we go back to linreg3 which contained periods of 52 and 17.33 weeks. 
+In this case we go back to linreg3 which contained periods of 52.25 and 17.4 weeks. 
 
 ```{r} 
-# plot residuals of linear regression 
+# Plot residuals of linear regression 
 ts.plot(linreg3$residuals)
 ```
 
@@ -1147,14 +1160,14 @@ When looking at the residual plot it looks like there may be some leftover seaso
 
 
 ```{r}
-#plot your histogram defining labels and breaks
+# Plot your histogram defining labels and breaks
 hist(linreg3$residuals, probability = TRUE, 
      main = "Distribution of residuals with normal curve", 
      xlab = "counts", 
      breaks = 15
      )
 
-#plot your normal curve on top
+# Plot your normal curve on top
 curve(dnorm(x, mean = mean(linreg3$residuals), 
             sd = sd(linreg3$residuals)), 
             add = TRUE, col = "red", lwd = 2)
@@ -1164,7 +1177,7 @@ curve(dnorm(x, mean = mean(linreg3$residuals),
 
 
 ```{r}
-# run shapiro-wilk test on data
+# Run shapiro-wilk test on data
 shapiro.test(linreg3$residuals)
 ```
 
@@ -1172,13 +1185,13 @@ The histogram is skewed to the right and the Shapiro-Wilk test for normality is 
 
 
 ```{r}
-# summary statistics
+# Summary statistics
 summary(linreg3$residuals)
 
-# look at the skewness
+# Look at the skewness
 skewness(linreg3$residuals)
 
-# look at kurtosis
+# Look at kurtosis
 kurtosis(linreg3$residuals)
 ```
 
@@ -1188,16 +1201,16 @@ We see that there is some skewness in the data (it is positive, so it is skewed 
 
 ## Stationarity 
 
-If there is a trend in the dataset then it is not stationary. However we removed the trend with the regression earlier, so we are pretty sure that at least there is no linear trend left. 
+If there is a trend in the dataset then it is not stationary. However, we removed the trend with the regression earlier, so we are pretty sure that at least there is no linear trend left. 
 
 
 ```{r}
 
-# regress residuals against time
+# Regress residuals against time
 residreg <- lm(linreg3$residuals ~ t) 
 
 
-# view output of regression 
+# View output of regression 
 summary(residreg)
 
 ```
@@ -1207,7 +1220,7 @@ We could plot this regression against our residuals.
 
 ```{r}
 
-# plot residuals 
+# Plot residuals 
 plot(linreg3$residuals) 
 
 # add line from regression 
@@ -1217,31 +1230,27 @@ abline(residreg)
 
 We can see that the coefficient is close to 0 and that slope is not statistically significant from a straight line. 
 
-It would also be possible to investigate that the variance is constant by comparing variance against the mean. We could use a 5-week interval for this. 
+It would also be possible to investigate that the variance is constant over time. 
+We could use a 5-week interval for this. 
 
 
 
 ```{r}
 
-# calculate variance and mean means
+# Calculate variance 
 varianceresid <- rollapply(linreg3$residuals, width = 5, FUN = var, fill = NA)
-meanresid <- rollapply(linreg3$residuals, width = 5, FUN = mean, fill = NA)
 
+# Linear regression
+residreg_var <- lm(varianceresid ~ t)
 
-# linear regression
-
-residreg_mean <- lm(meanresid ~ varianceresid)
-
-# view linear outcome 
-summary(residreg_mean)
-
-# plot regression 
-plot(varianceresid, meanresid)
-abline(residreg_mean) 
+# View linear outcome 
+summary(residreg_var)
 
 ```
 
-While there are some outliers, there are very few. Although signficant, the minimal slope of this regression shows that we can be happy that the residuals are stationary.
+There does not apper to be a significant difference in variance over time.
+
+Our results suggest that the residuals are stationary.
 
 <!---CHUNK_PAGEBREAK--->
 
@@ -1251,19 +1260,21 @@ While there are some outliers, there are very few. Although signficant, the mini
 We can check for autocorrelation using the *acf* function. This function also creates a plot.
 
 ```{r}
-# estimate autocorrelation without plotting
-acplotresid <-  acf(linreg3$residual)
+# Estimate autocorrelation without plotting
+acplotresid <-  acf(linreg3$residual, plot = FALSE)
+plot(acplotresid, ci.type = "ma")
 ```
 
 The ACF plot shows us that our data are highly correlated at early lags, which is expected from surveillance data. We also see that a seasonal pattern still remains in the residuals, even if it is not significant. 
 This indicates that it may be worth checking the residuals of the model with the further seasonal term (of 26 weeks). 
-And in fact, what we see that the normality of residuals is not improved in the model with 3 seasonal terms. The data remain stationary (no increasing variance with increasing mean). However the ACF plot is improved. There is still autocorrelation among the first few lags, but it is lower and we see less of a seasonal pattern remaining in the residuals. 
+
+In fact, we will see that the normality of residuals is not improved in the model with 3 seasonal terms. The data remain stationary (no increasing variance with increasing mean). However, the ACF plot is improved. There is still autocorrelation among the first few lags, but it is lower and we see less seasonal pattern remaining in the residuals. 
 
 <!---CHUNK_PAGEBREAK---> 
 
 # Question 6 
 
-Using the model containing a linear trend and two seasonal periods at 52 and 17.33 weeks, model the data including 95% prediction interval and graph them. 
+Using the model containing a linear trend and two seasonal periods at 52.25 and 17.4 weeks, model the data including 95% prediction interval and graph them. 
 
 In a second step, downweight outliers that are above 2 standard deviations of the model. In public health models that downweight outliers a variety of weights are used. Here we will use a very simple weight of 1/(square of the standardised residuals). This means that the higher the outlier, the lower the weight will be assigned to them. Create the new model and 95% detection intervals and graph them. 
 
@@ -1279,10 +1290,10 @@ Retrieving prediction intervals is possible using the *predict* function on your
 
 ```{r}
 
-# retrieve your 95% prediction intervals from regression
+# Retrieve your 95% prediction intervals from regression
 pred_int <- predict(linreg3, interval = "prediction", level = 0.95)
 
-# plot 
+# Plot 
 ts.plot(campy_ts, pred_int,
         col = c("black", "red", "blue", "blue"),
         main = "Original data, fitted values and 95% prediction interval")
@@ -1296,7 +1307,7 @@ legend("top",
 ```
 
 
-So we can see that at certain points the data exceed the intervals. These outliers may represent outbreaks. However we have also been including these data points to estimate the model and the prediction intervals to determine what is expected. This will artificially inflate our prediction intervals. 
+So we can see that at certain points the data exceed the intervals. These outliers may represent outbreaks. However, we have also been including these data points to estimate the model and the prediction intervals to determine what is expected. This will artificially inflate our prediction intervals. 
 
 
 We could take these outliers into account when estimating our model and create 95% detection intervals around it. There are very many ways of taking outliers into account. Here we will use a simple method of downweighting outliers. This is an empirical approach and the weight given to the outliers can be adjusted according to how the model performs. 
@@ -1310,28 +1321,28 @@ This approach will be done in several steps:
 
 ```{r, warning = FALSE}
 
-# extract the standard deviations for each point
-stdres <- residuals(linreg3) / sigma(linreg3)
+# Standardised residuals
+stdres <- rstandard(linreg3)
 
-# create weights 
+# Create weights 
   # if standard deviation greater than 2 then
   # 1 / stdres^2 otherwise 1
 wts <- ifelse(stdres > 2, 
               1 / (stdres^2), 1)
 
 
-# modify counts 
+# Modify counts 
 campy_tswtd <- campy_ts * wts
 
 
-# run linear regression for counts over time
+# Run linear regression for counts over time
 linreg3wtd <- lm(campy_tswtd ~ t + sin52 + cos52 + sin17 + cos17)
 
 
-# retrieve your 95% prediction intervals from regression
+# Retrieve your 95% prediction intervals from regression
 pred_intwtd <- predict(linreg3wtd, interval = "prediction", level = 0.95)
 
-# plot 
+# Plot 
 ts.plot(campy_ts, pred_intwtd,
         col = c("black", "red", "blue", "blue"),
         main = "Original data, fitted values and 95% prediction interval")
@@ -1371,8 +1382,8 @@ This section is based on *Salmon, Schumacher and Höhle, 2014*. They provide a g
 
 ```{r}
 
-# define surveillance time series object
-campy_sts <- sts(observed = campy_week$count,
+# Define surveillance time series object
+campy_sts <- sts(observed = campy_weeknum$count,
                  start = c(2007, 1), 
                  freq = 52)
 ```
@@ -1399,7 +1410,7 @@ An alarm is raised if $y_{t_0} > U_{t_0}$. To apply the detection algorithm in R
 <!---CHUNK_PAGEBREAK---> 
 
 ```{r}
-# define control
+# Define control
 ctrl <- list(range = 8:209, 
              method = "C1",
              alpha = 0.05) 
@@ -1408,14 +1419,14 @@ ctrl <- list(range = 8:209,
 We can then use the *earsC* function from the surveillance package. 
 
 ```{r}
-# apply EARS C1 algorithm 
+# Apply EARS C1 algorithm 
 earmethod <- earsC(campy_sts, control = ctrl)
 ```
 
 You can also plot the outcome of this algorithm. 
 
 ```{r}
-# plot your counts with algorithm applied 
+# Plot your counts with algorithm applied 
 plot(earmethod, 
      main = "EARS method, 7 weeks, alpha 0.05",
      legend.opts = list("top", horiz = TRUE))
@@ -1441,14 +1452,14 @@ Selected notifiable disease reports, US, comparison of provisional 4-week totals
 To apply the CDC detection algorithm we need to create *disProg* object from our *sts* object. 
 
 ```{r}
-# create a disprog object 
+# Create a disprog object 
 campy_stsd <- sts2disProg(campy_sts)
 ```
 
 
 
 ```{r}
-# apply the cdc algorithm 
+# Apply the cdc algorithm 
 cdcmethod <- algo.cdc(campy_stsd, 
                       control = list(range = 130:209, b = 2, m = 4, alpha = 0.05))
 
@@ -1466,12 +1477,12 @@ plot(cdcmethod,
 It is clear from this plot that the x-axis labels of time are not correct. This appears to be an in-built error of the package and can be corrected as below. 
 
 ```{r}
-# define the start week and year for your plot labels
+# Define the start week and year for your plot labels
   # nb. %% is the modulus
 syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
 sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
 
-# plot your counts with algorithm applied 
+# Plot your counts with algorithm applied 
 plot(cdcmethod, startyear = syear, firstweek = sweek,
      main = "CDC Historical Mean Method, b=2 years, m=4 weeks, alpha 0.05",
      legend.opts = list(x = "top", horiz = TRUE))
@@ -1485,7 +1496,7 @@ This method fits an over-dispersed Poisson generalized linear model with log lin
 
 ```{r}
 
-# define control
+# Define control
 ctrl <- list(range = 130:209,
              b = 2, w = 4, 
              weightsThreshold = 2.56,
@@ -1493,10 +1504,10 @@ ctrl <- list(range = 130:209,
              pThresholdTrend = 0.05,
              thresholdMethod = "delta")
 
-# apply farrington flexible method 
+# Apply farrington flexible method 
 farringtonmethod <- farringtonFlexible(campy_sts, ctrl)
 
-# plot your counts with algorithm applied 
+# Plot your counts with algorithm applied 
 plot(farringtonmethod, 
      main = "Farrington method, 2 years, 4 weeks, alpha 0.01",
      legend.opts = list("top", horiz = TRUE))
@@ -1509,22 +1520,22 @@ plot(farringtonmethod,
 The CUSUM algorithm is a technique of statistical process control (SPC). It assumes a two-state situation, so-called in-control and out-of-control (i.e. an outbreak) and we assume different distribution of case counts in both states. The aim of the CUSUM is to find the point where the distribution changes. As we are dealing with a time series with underlying seasonality we need to define `m` as `glm` to control for it.
 
 ```{r}
-# define control range and method
+# Define control range and method
 ctrl <- list(range = 130:209,
              m = "glm")
 
-# apply cusum algorithm 
+# Apply cusum algorithm 
 cusummethod <- algo.cusum(campy_stsd, control = ctrl)
 ```
 
 Here too there is an error with axis labels and this can be corrected as below before plotting. 
 
 ```{r}
-# correct start week and year for axis labels
+# Correct start week and year for axis labels
 syear <- floor(cdcmethod$disProgObj$start[1] + 130 / cdcmethod$disProgObj$freq)
 sweek <- -((cdcmethod$disProgObj$start[2] + 130) %% cdcmethod$disProgObj$freq)
 
-# plot with algorithm applied
+# Plot with algorithm applied
 plot(cusummethod, startyear = syear, firstweek = sweek,
      main = "CUSUM method",
      legend.opts = list(x = "top", horiz = TRUE))
@@ -1537,19 +1548,19 @@ plot(cusummethod, startyear = syear, firstweek = sweek,
 This method is a synthesis of traditional methods like the Farrington algorithm and statistical process control algorithms like CUSUM. The idea is to combine the possibility to detect sustained shifts with the ability of taking overdispersion or seasonality into account. You need to split your data into two phases, where phase one is  used for fitting a GLM model. Technically, in the `glrnb` functions, the time period defined in the `range` option will be phase 2 and everything before it will be considered phase 1.
 
 ```{r, results = 'hide'}
-# define your period of interest
+# Define your period of interest
 phase2 <- 130:209
 
-# define control options
+# Define control options
 ctrl <- list(range = phase2, c.ARL = 4, theta = log(1.4), ret = "cases",
                mu0 = list(S = 1, trend = TRUE, refit = FALSE))
 
-# apply the algorithm
+# Apply the algorithm
 glrnbmethod <- glrnb(campy_sts, control = ctrl)
 ```
 
 ```{r}
-# plot with algorithm applied
+# Plot with algorithm applied
 plot(glrnbmethod, main = "GLRNB method",
      legend.opts = list("top", horiz = TRUE))
 ```
@@ -1558,16 +1569,17 @@ plot(glrnbmethod, main = "GLRNB method",
 
 # Comparing algorithms 
 
-
 It is then possible to compare the various algorithms using the *algo.compare* function. 
+
 ```{r}
-# list algorithms used 
+# List algorithms used 
 campy_algos <- list(earmethod, cdcmethod, cusummethod, farringtonmethod, glrnbmethod)
 
-# compare algorithms
+# Compare algorithms
 algo.compare(campy_algos)
 ```
 
+However, in order to identify True Positive (TP), False Negative (FN), True Negative (TN) and False Negative (FN), we would need to provide each algorithm with a *"Gold Standard"* of true Campylobacter outbreaks over the study period.
 
 
 
